@@ -5,6 +5,7 @@
 #include <pcl_conversions/pcl_conversions.h>    // toROSMsg/fromROSMsg
 #include <pcl/point_cloud.h>        // PointCloud2
 #include <pcl/filters/voxel_grid.h> // filter
+#include <pcl/filters/passthrough.h>
 
 using namespace std;
 
@@ -17,12 +18,42 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
     pcl::PointCloud<pcl::PointXYZ> laserCloudIn;
     pcl::fromROSMsg(*laserCloudMsg, laserCloudIn);
     std::vector<int> indices;
+
+    // Debugs
+    int sizeIn, sizeNan, sizeRange, sizeSampling;
+    // 1. remove invalid points.
+    sizeIn = laserCloudIn.size();
     pcl::removeNaNFromPointCloud(laserCloudIn, laserCloudIn, indices);
+    sizeNan = laserCloudIn.size();
+    
+    // 2. remove too far/near points
+    pcl::PassThrough<pcl::PointXYZ> pass;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloudInPtr = laserCloudIn.makeShared();
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloudOutPtr(new pcl::PointCloud<pcl::PointXYZ>);
+    pass.setInputCloud(cloudInPtr);
+    pass.setFilterFieldName("x");           // x-axis [-3, 3];
+    pass.setFilterLimits(-3.0, 3.0);
+    pass.filter(*cloudOutPtr);
+    pass.setInputCloud(cloudOutPtr);
+    pass.setFilterFieldName("y");
+    pass.setFilterLimits(-3.0, 3.0);
+    pass.filter(*cloudOutPtr);
+    sizeRange = cloudOutPtr->size();
+
+    // 3. downsampling
+    pcl::VoxelGrid<pcl::PointXYZ> grid;
+    double s = 0.1;
+    grid.setLeafSize(s, s, s);
+    grid.setInputCloud(cloudOutPtr);
+    grid.filter(*cloudOutPtr);
+    sizeSampling = cloudOutPtr->size();
+
+    ROS_WARN_STREAM("Filter: in: " << sizeIn << ", nan: " << sizeNan << ", range: " << sizeRange << ", sampling: " << sizeSampling);
 
     sensor_msgs::PointCloud2 laserCloudOutMsg;
-    pcl::toROSMsg(laserCloudIn, laserCloudOutMsg);
+    pcl::toROSMsg(*cloudOutPtr, laserCloudOutMsg);
     laserCloudOutMsg.header.stamp = laserCloudMsg->header.stamp;
-    laserCloudOutMsg.header.frame_id = "/camera_init";
+    laserCloudOutMsg.header.frame_id = "/laser_link";
     pubLaserCloud.publish(laserCloudOutMsg);
     ROS_INFO("Pub points...");
 }

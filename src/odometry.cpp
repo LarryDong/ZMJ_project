@@ -42,10 +42,7 @@ public:
 
 std::queue<sensor_msgs::PointCloud2ConstPtr> allPointsBuf;
 std::mutex mBuf;
-
-
-// double para_q[4] = {0, 0, 0, 1};
-// double para_t[3] = {0, 0, 0};
+nav_msgs::Path laserPath;
 
 void cleanPointHandler(const sensor_msgs::PointCloud2ConstPtr &pointCloud){
     mBuf.lock();
@@ -76,6 +73,7 @@ int main(int argc, char **argv){
     // pcl::PointCloud<pcl::PointXYZ>::Ptr ptNew(new pcl::PointCloud<pcl::PointXYZ>()), ptOld(new pcl::PointCloud<pcl::PointXYZ>());
     myPC::Ptr ptNew(new myPC()), ptOld(new myPC());
 
+    int counter = 0;
     while(ros::ok()){
         ros::spinOnce();
 
@@ -96,7 +94,6 @@ int main(int argc, char **argv){
             continue;
         }
 
-
         // ptOld = ptNew;      // update point cloud;
         ptOld.swap(ptNew);
         // ROS_WARN_STREAM("Target: " << ptOld->size());
@@ -109,23 +106,48 @@ int main(int argc, char **argv){
         // calculate ICP;
         myPC pcOutput;
         Eigen::Matrix4d T;
-        ROS_INFO("Begin NDT...");
         pairAlign(ptNew, ptOld, pcOutput, T);
-        ROS_INFO("End NDT...");
         Eigen::Matrix3d tmpT = T.topLeftCorner(3,3);
         q_last_curr = tmpT;
         t_last_curr = T.topRightCorner(3,1);
         t_w_curr = t_w_curr + q_w_curr * t_last_curr;
         q_w_curr = q_w_curr * q_last_curr;
-        ROS_INFO_STREAM("trace: \n"<<t_w_curr);
+        // ROS_INFO_STREAM("trace: \n"<<t_w_curr);
+
+        // publish trace/odom
+        nav_msgs::Odometry odom;
+        odom.header.frame_id = "/laser_link";
+        odom.child_frame_id = "/laser_link";
+        odom.header.stamp = ros::Time();
+        odom.pose.pose.orientation.x = q_w_curr.x();
+        odom.pose.pose.orientation.y = q_w_curr.y();
+        odom.pose.pose.orientation.z = q_w_curr.z();
+        odom.pose.pose.orientation.w = q_w_curr.w();
+        odom.pose.pose.position.x = t_w_curr.x();
+        odom.pose.pose.position.y = t_w_curr.y();
+        odom.pose.pose.position.z = t_w_curr.z();
+        pubLaserOdometry.publish(odom);
+
+        // geometry_msgs
+        geometry_msgs::PoseStamped laserPose;
+        laserPose.header = odom.header;
+        laserPose.pose = odom.pose.pose;
+        // laser path.
+        laserPath.header.stamp = odom.header.stamp;
+        laserPath.poses.push_back(laserPose);
+        laserPath.header.frame_id = "/laser_link";
+        pubLaserPath.publish(laserPath);
+
+        ROS_INFO_STREAM("Pub cnt: " << counter++);
     }
 
 }
 
 
-void pairAlign(const myPC::Ptr pcSrc, const myPC::Ptr pcTgt, myPC output, Eigen::Matrix4d &T){
-    
-    
+void pairAlign(const myPC::Ptr pcSrc, const myPC::Ptr pcTgt, myPC output, Eigen::Matrix4d &Transform){
+
+// #define NDT
+#ifdef NDE
     // down sampling
     myPC::Ptr src(new myPC), tgt(new myPC);
     pcl::VoxelGrid<PointT> grid;
@@ -152,8 +174,23 @@ void pairAlign(const myPC::Ptr pcSrc, const myPC::Ptr pcTgt, myPC output, Eigen:
     ndt.align(*output_cloud, init_guess);
     ROS_WARN("Align end...");
     T = ndt.getFinalTransformation().cast<double>();
+#endif
 
-#if 0
+#define ICP
+#ifdef ICP
+    Eigen::Matrix4f T = Eigen::Matrix4f::Identity();
+    pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
+    icp.setInputSource(pcSrc);
+    icp.setInputTarget(pcTgt);
+    pcl::PointCloud<pcl::PointXYZ> tmpCloud;
+    icp.align(tmpCloud, T);
+    Transform = icp.getFinalTransformation().cast<double>();
+    // targetToSource = T.inverse();
+    // Transform = targetToSource.cast<double>();
+#endif
+
+// #define ICP_Normal
+#ifdef ICP_Normal
     // normal and curve
     PointCloudWithNormals::Ptr points_with_normals_src(new PointCloudWithNormals);
     PointCloudWithNormals::Ptr points_with_normals_tgt(new PointCloudWithNormals);
