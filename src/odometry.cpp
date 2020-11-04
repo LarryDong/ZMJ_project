@@ -13,11 +13,11 @@
 #include <pcl/point_cloud.h>        // PointCloud2
 #include <pcl/filters/filter.h>
 #include <pcl/filters/voxel_grid.h> // filter
-// #include <pcl/features/normal_3d.h>
+#include <pcl/features/normal_3d.h>
 #include <pcl/registration/ndt.h>
 #include <pcl/registration/icp.h>
-// #include <pcl/registration/icp_nl.h>
-// #include <pcl/registration/transforms.h>
+#include <pcl/registration/icp_nl.h>
+#include <pcl/registration/transforms.h>
 
 #include <Eigen/Dense>
 
@@ -40,16 +40,25 @@ public:
     }
 };
 
-std::queue<sensor_msgs::PointCloud2ConstPtr> allPointsBuf;
+std::queue<sensor_msgs::PointCloud2ConstPtr> selectedPointsBuf; // , fullPointsBuf;
+
 std::mutex mBuf;
 nav_msgs::Path laserPath;
 
 void cleanPointHandler(const sensor_msgs::PointCloud2ConstPtr &pointCloud){
     mBuf.lock();
-    allPointsBuf.push(pointCloud);
+    selectedPointsBuf.push(pointCloud);
     mBuf.unlock();
-    // ROS_INFO_STREAM("Odom get points. Size: "<<allPointsBuf.size());
+    // ROS_INFO_STREAM("Odom get points. Size: "<<selectedPointsBuf.size());
 }
+
+// // subscribe all points for sync. the time
+// void fullPointCloudHandler(const sensor_msgs::PointCloud2ConstPtr &pointCloud){
+//     mBuf.lock();
+//     fullPointsBuf.push(pointCloud);
+//     mBuf.unlock();
+// }
+
 
 void pairAlign(const myPC::Ptr pcSrc, const myPC::Ptr pcTar, myPC output, Eigen::Matrix4d &final);
 
@@ -59,8 +68,10 @@ int main(int argc, char **argv){
     
     ros::NodeHandle nh;
     ros::Subscriber sub = nh.subscribe<sensor_msgs::PointCloud2>("/cleanPointCloud", 100, cleanPointHandler);
+    // ros::Subscriber subFullPoints = nh.subscribe<sensor_msgs::PointCloud2>("/fullPointCloud", 100, fullPointCloudHandler);
     ros::Publisher pubLaserOdometry = nh.advertise<nav_msgs::Odometry>("/laser_odom_to_init", 100);
     ros::Publisher pubLaserPath = nh.advertise<nav_msgs::Path>("/laser_odom_path", 100);
+
     nav_msgs::Path laserPath;
 
     // ros::Rate rate(1000);
@@ -70,37 +81,37 @@ int main(int argc, char **argv){
     Eigen::Quaterniond q_w_curr(1, 0, 0, 0), q_last_curr;
     Eigen::Vector3d t_w_curr(0, 0, 0), t_last_curr;
 
-    // pcl::PointCloud<pcl::PointXYZ>::Ptr ptNew(new pcl::PointCloud<pcl::PointXYZ>()), ptOld(new pcl::PointCloud<pcl::PointXYZ>());
     myPC::Ptr ptNew(new myPC()), ptOld(new myPC());
 
     int counter = 0;
     while(ros::ok()){
         ros::spinOnce();
 
-        if(allPointsBuf.empty()){
+        if(selectedPointsBuf.empty()){
             // ROS_WARN("Empty buf...");
             continue;
         }
-
+        
+        ros::Time syncTime;
         if(!is_inited){         // initialize
             q_last_curr = Eigen::Quaterniond(1, 0, 0, 0);
             t_w_curr = Eigen::Vector3d(0, 0, 0);
             mBuf.lock();
             ptNew->clear();
-            pcl::fromROSMsg(*allPointsBuf.front(), *ptNew);
-            allPointsBuf.pop();
+            pcl::fromROSMsg(*selectedPointsBuf.front(), *ptNew);
+            // syncTime = selectedPointsBuf.front()->header.stamp;
+            selectedPointsBuf.pop();
             mBuf.unlock();
             is_inited = true;
             continue;
         }
 
-        // ptOld = ptNew;      // update point cloud;
         ptOld.swap(ptNew);
-        // ROS_WARN_STREAM("Target: " << ptOld->size());
         mBuf.lock();
         ptNew->clear();
-        pcl::fromROSMsg(*allPointsBuf.front(), *ptNew);
-        allPointsBuf.pop();
+        pcl::fromROSMsg(*selectedPointsBuf.front(), *ptNew);
+        auto time_stamp = selectedPointsBuf.front()->header.stamp;
+        selectedPointsBuf.pop();
         mBuf.unlock();
 
         // calculate ICP;
@@ -118,7 +129,7 @@ int main(int argc, char **argv){
         nav_msgs::Odometry odom;
         odom.header.frame_id = "/laser_link";
         odom.child_frame_id = "/laser_link";
-        odom.header.stamp = ros::Time();
+        odom.header.stamp = time_stamp;
         odom.pose.pose.orientation.x = q_w_curr.x();
         odom.pose.pose.orientation.y = q_w_curr.y();
         odom.pose.pose.orientation.z = q_w_curr.z();
@@ -138,7 +149,11 @@ int main(int argc, char **argv){
         laserPath.header.frame_id = "/laser_link";
         pubLaserPath.publish(laserPath);
 
+
+        // update full point clouds timestamp
+
         ROS_INFO_STREAM("Pub cnt: " << counter++);
+        ROS_INFO_STREAM("Odom: "<<odom.pose.pose.position);
     }
 
 }
@@ -147,7 +162,11 @@ int main(int argc, char **argv){
 void pairAlign(const myPC::Ptr pcSrc, const myPC::Ptr pcTgt, myPC output, Eigen::Matrix4d &Transform){
 
 // #define NDT
-#ifdef NDE
+#define ICP
+// #define ICP_Normal
+
+
+#ifdef NDT
     // down sampling
     myPC::Ptr src(new myPC), tgt(new myPC);
     pcl::VoxelGrid<PointT> grid;
@@ -176,7 +195,6 @@ void pairAlign(const myPC::Ptr pcSrc, const myPC::Ptr pcTgt, myPC output, Eigen:
     T = ndt.getFinalTransformation().cast<double>();
 #endif
 
-#define ICP
 #ifdef ICP
     Eigen::Matrix4f T = Eigen::Matrix4f::Identity();
     pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;
@@ -189,7 +207,6 @@ void pairAlign(const myPC::Ptr pcSrc, const myPC::Ptr pcTgt, myPC output, Eigen:
     // Transform = targetToSource.cast<double>();
 #endif
 
-// #define ICP_Normal
 #ifdef ICP_Normal
     // normal and curve
     PointCloudWithNormals::Ptr points_with_normals_src(new PointCloudWithNormals);
@@ -198,12 +215,12 @@ void pairAlign(const myPC::Ptr pcSrc, const myPC::Ptr pcTgt, myPC output, Eigen:
     pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>());
     norm_est.setSearchMethod(tree);
     norm_est.setKSearch(30);
-    norm_est.setInputCloud(src);
+    norm_est.setInputCloud(pcSrc);
     norm_est.compute(*points_with_normals_src);
-    pcl::copyPointCloud(*src, *points_with_normals_src);
-    norm_est.setInputCloud(tgt);
+    pcl::copyPointCloud(*pcSrc, *points_with_normals_src);
+    norm_est.setInputCloud(pcTgt);
     norm_est.compute(*points_with_normals_tgt);
-    pcl::copyPointCloud(*tgt, *points_with_normals_tgt);
+    pcl::copyPointCloud(*pcTgt, *points_with_normals_tgt);
 
     MyPointRepresentation point_representation;
     float alpha[4] = {1.0, 1.0, 1.0, 1.0};      // weights
@@ -232,7 +249,8 @@ void pairAlign(const myPC::Ptr pcSrc, const myPC::Ptr pcTgt, myPC output, Eigen:
     // }
     reg.align(*reg_result);
     T = reg.getFinalTransformation() * T;
-    targetToSource = T.inverse();
+    // targetToSource = T.inverse();
+    targetToSource = T;
     Transform = targetToSource.cast<double>();
     // // ICP
     // pcl::IterativeClosestPoint<pcl::PointXYZ, pcl::PointXYZ> icp;

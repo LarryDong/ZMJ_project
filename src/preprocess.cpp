@@ -10,7 +10,7 @@
 using namespace std;
 
 
-ros::Publisher pubLaserCloud;
+ros::Publisher pubSelectedCloud, pubFullCloud;
 
 void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
     // ROS_INFO("In laser pointCloud handler");
@@ -25,7 +25,11 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
     sizeIn = laserCloudIn.size();
     pcl::removeNaNFromPointCloud(laserCloudIn, laserCloudIn, indices);
     sizeNan = laserCloudIn.size();
-    
+
+    sensor_msgs::PointCloud2 fullCloudOutMsg;
+    pcl::toROSMsg(laserCloudIn, fullCloudOutMsg);
+    pubFullCloud.publish(fullCloudOutMsg);     // pub full cloud (without NaN)
+
     // 2. remove too far/near points
     pcl::PassThrough<pcl::PointXYZ> pass;
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloudInPtr = laserCloudIn.makeShared();
@@ -54,8 +58,11 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
     pcl::toROSMsg(*cloudOutPtr, laserCloudOutMsg);
     laserCloudOutMsg.header.stamp = laserCloudMsg->header.stamp;
     laserCloudOutMsg.header.frame_id = "/laser_link";
-    pubLaserCloud.publish(laserCloudOutMsg);
-    ROS_INFO("Pub points...");
+    pubSelectedCloud.publish(laserCloudOutMsg);
+
+    // check time stamp
+    if (fullCloudOutMsg.header.stamp != laserCloudOutMsg.header.stamp)
+        ROS_ERROR("Time stamp not same!");
 }
 
 
@@ -65,7 +72,8 @@ int main(int argc, char** argv){
 
     ros::NodeHandle nh;
     ros::Subscriber subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/lslidar_point_cloud", 100, laserCloudHandler);
-    pubLaserCloud = nh.advertise<sensor_msgs::PointCloud2>("/cleanPointCloud", 100);
+    pubSelectedCloud = nh.advertise<sensor_msgs::PointCloud2>("/cleanPointCloud", 100);
+    pubFullCloud = nh.advertise<sensor_msgs::PointCloud2>("/fullPointCloud", 100);
 
 	ros::spin();
 	return 0;

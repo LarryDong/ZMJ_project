@@ -54,6 +54,7 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(preprocess_node src/preprocess.cpp)
 add_executable(odometry_node src/odometry.cpp)
+add_executable(mapping_node src/mapping.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -68,3 +69,4 @@ add_executable(odometry_node src/odometry.cpp)
 ## Specify libraries to link a library or executable target against
 target_link_libraries(preprocess_node ${catkin_LIBRARIES} ${OpenCV_LIBS})
 target_link_libraries(odometry_node ${catkin_LIBRARIES} ${OpenCV_LIBS})
+target_link_libraries(mapping_node ${catkin_LIBRARIES} ${OpenCV_LIBS})
