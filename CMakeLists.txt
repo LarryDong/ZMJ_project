@@ -15,7 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 find_package(OpenCV REQUIRED)
-
+find_package(Ceres REQUIRED)
 
 catkin_package(
 #  INCLUDE_DIRS include
@@ -33,13 +33,14 @@ include_directories(
     # /usr/include/pcl-1.8
     /usr/include/eigen3
     ${catkin_INCLUDE_DIRS}
+    ${CERES_INCLUDE_DIRS}
 )
 
 add_executable(scanRegistration_node src/scanRegistration.cpp)
-# add_executable(odometry_node src/odometry.cpp)
+add_executable(laserOdometry_node src/laserOdometry.cpp)
 # add_executable(mapping_node src/mapping.cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(scanRegistration_node ${catkin_LIBRARIES} ${OpenCV_LIBS})
-# target_link_libraries(odometry_node ${catkin_LIBRARIES} ${OpenCV_LIBS})
+target_link_libraries(laserOdometry_node ${catkin_LIBRARIES} ${OpenCV_LIBS} ${CERES_LIBRARIES})
 # target_link_libraries(mapping_node ${catkin_LIBRARIES} ${OpenCV_LIBS})
