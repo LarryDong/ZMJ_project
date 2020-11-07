@@ -18,7 +18,10 @@ using std::atan2;
 using std::cos;
 using std::sin;
 
-const double scanPeriod = 0.05;      //~ 1/frequency.
+const double scanPeriod = 0.20;      //~ 1/frequency.
+
+int SLOW_SCALE = 5;
+int g_slow_counter = 0;
 
 // const int systemDelay = 0; 
 // int systemInitCount = 0;
@@ -40,7 +43,7 @@ ros::Publisher pubSurfPointsLessFlat;
 std::vector<ros::Publisher> pubEachScan;
 
 bool PUB_EACH_LINE = false;
-double MINIMUM_RANGE = 0.1;
+double MINIMUM_RANGE = 0.5;
 
 template <typename PointT>
 void removeClosedPointCloud(const pcl::PointCloud<PointT> &cloud_in, pcl::PointCloud<PointT> &cloud_out, float thres){
@@ -66,6 +69,9 @@ void removeClosedPointCloud(const pcl::PointCloud<PointT> &cloud_in, pcl::PointC
 
 void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
 
+    g_slow_counter++;
+    if (g_slow_counter % SLOW_SCALE != 0)
+        return ;
     // // STEP 0. System init.
     // if (!systemInited){ 
     //     systemInitCount++;
