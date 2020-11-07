@@ -171,6 +171,8 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
     for (int i = 0; i < N_SCANS; ++i){
         if (scanEndInd[i] - scanStartInd[i] < 6)    // skip less point scans
             continue;
+
+        pcl::PointCloud<PointType>::Ptr surfPointsLessFlatScan(new pcl::PointCloud<PointType>);
         for (int j = 0; j < 6; ++j){
             // start/end point of each scan
             int sp = scanStartInd[i] + (scanEndInd[i] - scanStartInd[i]) * j / 6; 
@@ -212,10 +214,50 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
                         cloudNeighborPicked[ind + l] = 1;
                     }
 
-                    // TODO: deal with planar points
+                    // Planer points: deal with planar points
+                    int smallestPicedNum = 0;
+                    for(int k=sp; k<=ep; ++k){
+                        int ind = cloudSortInd[k];
+                        if(cloudNeighborPicked[ind]==0 && cloudCurvature[ind] <0.1){
+                            cloudLabel[ind] = -1;
+                            surfPointsFlat.push_back(laserCloud->points[ind]);
+                            smallestPicedNum++;
+                            if (smallestPicedNum >= 4)
+                                break;
+                            cloudNeighborPicked[ind] = 1;
+                            for (int l = 1; l <= 5; ++l){
+                                float diffX = laserCloud->points[ind + l].x - laserCloud->points[ind + l - 1].x;
+                                float diffY = laserCloud->points[ind + l].y - laserCloud->points[ind + l - 1].y;
+                                float diffZ = laserCloud->points[ind + l].z - laserCloud->points[ind + l - 1].z;
+                                if (diffX * diffX + diffY * diffY + diffZ * diffZ > 0.05)
+                                    break;
+                            }
+
+                        }
+                    }
+                    for (int l = -1; l >= -5; l--){
+                        float diffX = laserCloud->points[ind + l].x - laserCloud->points[ind + l + 1].x;
+                        float diffY = laserCloud->points[ind + l].y - laserCloud->points[ind + l + 1].y;
+                        float diffZ = laserCloud->points[ind + l].z - laserCloud->points[ind + l + 1].z;
+                        if (diffX * diffX + diffY * diffY + diffZ * diffZ > 0.05)
+                            break;
+                        cloudNeighborPicked[ind + l] = 1;
+                    }
                 }
             }
+
+            // Less flat points.
+            for (int k = sp; k <= ep; k++){
+                if (cloudLabel[k] <= 0)
+                    surfPointsLessFlatScan->push_back(laserCloud->points[k]); // 所有的其它点都归属为surfPointsLessFlatScan
+            }
         }
+        pcl::PointCloud<PointType> surfPointsLessFlatScanDS;
+        pcl::VoxelGrid<PointType> downSizeFilter;
+        downSizeFilter.setInputCloud(surfPointsLessFlatScan);
+        downSizeFilter.setLeafSize(0.2, 0.2, 0.2);
+        downSizeFilter.filter(surfPointsLessFlatScanDS); // 进行点云下采样
+        surfPointsLessFlat += surfPointsLessFlatScanDS;
     }
 
 
@@ -232,14 +274,27 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
     cornerPointsSharpMsg.header.stamp = laserCloudMsg->header.stamp;
     cornerPointsSharpMsg.header.frame_id = "/laser_link";
     pubCornerPointsSharp.publish(cornerPointsSharpMsg);
-
+    // less sharp corners.
     sensor_msgs::PointCloud2 cornerPointsLessSharpMsg;
     pcl::toROSMsg(cornerPointsLessSharp, cornerPointsLessSharpMsg);
     cornerPointsLessSharpMsg.header.stamp = laserCloudMsg->header.stamp;
     cornerPointsLessSharpMsg.header.frame_id = "/laser_link";
     pubCornerPointsLessSharp.publish(cornerPointsLessSharpMsg);
 
-    // Pub2: pub each linese
+    // Pub3: flat points;
+    sensor_msgs::PointCloud2 surfPointsFlat2;
+    pcl::toROSMsg(surfPointsFlat, surfPointsFlat2);
+    surfPointsFlat2.header.stamp = laserCloudMsg->header.stamp;
+    surfPointsFlat2.header.frame_id = "/laser_link";
+    pubSurfPointsFlat.publish(surfPointsFlat2);
+    // less flat points;
+    sensor_msgs::PointCloud2 surfPointsLessFlat2;
+    pcl::toROSMsg(surfPointsLessFlat, surfPointsLessFlat2);
+    surfPointsLessFlat2.header.stamp = laserCloudMsg->header.stamp;
+    surfPointsLessFlat2.header.frame_id = "/laser_link";
+    pubSurfPointsLessFlat.publish(surfPointsLessFlat2);
+
+    // Pub4: pub each linese
     if (PUB_EACH_LINE){
         for (int i = 0; i < N_SCANS; i++){
             sensor_msgs::PointCloud2 scanMsg;
@@ -262,8 +317,8 @@ int main(int argc, char **argv){
     pubLaserCloud = nh.advertise<sensor_msgs::PointCloud2>("/lslidar_point_cloud_2", 100);
     pubCornerPointsSharp = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_sharp", 100);
     pubCornerPointsLessSharp = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_less_sharp", 100);
-    // pubSurfPointsFlat = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_flat", 100);
-    // pubSurfPointsLessFlat = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_less_flat", 100);
+    pubSurfPointsFlat = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_flat", 100);
+    pubSurfPointsLessFlat = nh.advertise<sensor_msgs::PointCloud2>("/laser_cloud_less_flat", 100);
     // pubRemovePoints = nh.advertise<sensor_msgs::PointCloud2>("/laser_remove_points", 100);      //~ not subscribed by anyone.
 
     if(PUB_EACH_LINE){              //~ publish every scan lines. From 1-16/32/64
