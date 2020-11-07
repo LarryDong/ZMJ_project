@@ -23,7 +23,7 @@ const double scanPeriod = 0.05;      //~ 1/frequency.
 // const int systemDelay = 0; 
 // int systemInitCount = 0;
 // bool systemInited = false;
-int N_SCANS = 32;
+int N_SCANS = 32, RESERVED_SCANS = 16;
 float cloudCurvature[400000];       //~ each point's curvature
 int cloudSortInd[400000];           //~ 
 int cloudNeighborPicked[400000];    //~ whether a point's neighbour is picked. 1 for picked.
@@ -98,11 +98,9 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
     else if (endOri - startOri < M_PI)
         endOri += 2 * M_PI;
     //~ lslidar: [-1.43, 4.76];
-    // ROS_WARN_STREAM("Angle range: [" << startOri << ", " << endOri << "] .");
-    // return;
 
     bool halfPassed = false;
-    int count = cloudSize;
+    int count = 0;          // I use 0 to increase, because jump some scans.
     PointType point;
     std::vector<pcl::PointCloud<PointType>> laserCloudScans(N_SCANS);
     for (int i = 0; i < cloudSize; i++){
@@ -115,7 +113,10 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
         // ROS_INFO_STREAM("ID: " << scanID << ", Angle: " << angle);
         if (scanID < 0 || scanID >= N_SCANS - 1){
             // ROS_ERROR("invalid scan...");
-            count--;
+            // count--;
+            continue;
+        }
+        if (scanID % 2 != 0){
             continue;
         }
 
@@ -139,8 +140,9 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
         float relTime = (ori - startOri) / (endOri - startOri);     //~ use angle to calculate time interp
         point.intensity = scanID + scanPeriod * relTime;            //~ `intensity parameter is used for "ID.time"
         laserCloudScans[scanID].push_back(point);
+        count++;
     }
-    cloudSize = count; // 去除一些非法点之后的点云数量
+    cloudSize = count; //
     // printf("points size %d \n", cloudSize);
 
 
@@ -179,8 +181,8 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
             int ep = scanStartInd[i] + (scanEndInd[i] - scanStartInd[i]) * (j + 1) / 6 - 1;
             std::sort (cloudSortInd + sp, cloudSortInd + ep + 1, comp);
         
-            int largestPickedNum = 0;
-            for(int k=ep; k>=sp; --k){
+            int largestPickedNum = 0, smallestPickedNum = 0;
+            for (int k = ep; k >= sp; --k){         // 曲率从大到小遍历点云
                 int ind = cloudSortInd[k];
                 if (cloudNeighborPicked[ind] == 0 && cloudCurvature[ind] > 0.1){
                     largestPickedNum++;
@@ -213,27 +215,27 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
                             break;
                         cloudNeighborPicked[ind + l] = 1;
                     }
+                }
+            }
 
-                    // Planer points: deal with planar points
-                    int smallestPicedNum = 0;
-                    for(int k=sp; k<=ep; ++k){
-                        int ind = cloudSortInd[k];
-                        if(cloudNeighborPicked[ind]==0 && cloudCurvature[ind] <0.1){
-                            cloudLabel[ind] = -1;
-                            surfPointsFlat.push_back(laserCloud->points[ind]);
-                            smallestPicedNum++;
-                            if (smallestPicedNum >= 4)
-                                break;
-                            cloudNeighborPicked[ind] = 1;
-                            for (int l = 1; l <= 5; ++l){
-                                float diffX = laserCloud->points[ind + l].x - laserCloud->points[ind + l - 1].x;
-                                float diffY = laserCloud->points[ind + l].y - laserCloud->points[ind + l - 1].y;
-                                float diffZ = laserCloud->points[ind + l].z - laserCloud->points[ind + l - 1].z;
-                                if (diffX * diffX + diffY * diffY + diffZ * diffZ > 0.05)
-                                    break;
-                            }
-
-                        }
+            // Planer points: deal with planar points
+            for (int k = sp; k <= ep; ++k){     // 曲率从小到大遍历点云
+                int ind = cloudSortInd[k];  
+                if (cloudNeighborPicked[ind] == 0 && cloudCurvature[ind] < 0.1){
+                    cloudLabel[ind] = -1;
+                    surfPointsFlat.push_back(laserCloud->points[ind]);
+                    smallestPickedNum++;
+                    if (smallestPickedNum >= 4)
+                        break;
+                    
+                    cloudNeighborPicked[ind] = 1;
+                    for (int l = 1; l <= 5; ++l){
+                        float diffX = laserCloud->points[ind + l].x - laserCloud->points[ind + l - 1].x;
+                        float diffY = laserCloud->points[ind + l].y - laserCloud->points[ind + l - 1].y;
+                        float diffZ = laserCloud->points[ind + l].z - laserCloud->points[ind + l - 1].z;
+                        if (diffX * diffX + diffY * diffY + diffZ * diffZ > 0.05)
+                            break;
+                        cloudNeighborPicked[ind + l] = 1;
                     }
                     for (int l = -1; l >= -5; l--){
                         float diffX = laserCloud->points[ind + l].x - laserCloud->points[ind + l + 1].x;
@@ -255,11 +257,11 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
         pcl::PointCloud<PointType> surfPointsLessFlatScanDS;
         pcl::VoxelGrid<PointType> downSizeFilter;
         downSizeFilter.setInputCloud(surfPointsLessFlatScan);
-        downSizeFilter.setLeafSize(0.2, 0.2, 0.2);
+        float ds = 0.4;
+        downSizeFilter.setLeafSize(ds, ds, O_DSYNC);
         downSizeFilter.filter(surfPointsLessFlatScanDS); // 进行点云下采样
         surfPointsLessFlat += surfPointsLessFlatScanDS;
     }
-
 
     // Pub 1: full clouds
     sensor_msgs::PointCloud2 laserCloudOutMsg;
@@ -304,6 +306,8 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
             pubEachScan[i].publish(scanMsg);
         }
     }
+
+    ROS_INFO_STREAM("[Size]: sharp: " << cornerPointsSharp.size() << " / " << cornerPointsLessSharp.size() << ", flat: " << surfPointsFlat.size() << " / " << surfPointsLessFlat.size());
 }
 
 int main(int argc, char **argv){

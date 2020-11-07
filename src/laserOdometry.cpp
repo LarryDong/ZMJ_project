@@ -182,6 +182,7 @@ int main(int argc, char **argv){
 
             for (size_t opti_counter = 0; opti_counter < 1; ++opti_counter) {       // opitmize twice
                 corner_correspondence = 0;
+                plane_correspondence = 0;
                 ceres::LossFunction *loss_function = new ceres::HuberLoss(0.1); // 定义一个0.1阈值的huber核函数，优化时抑制离群点用
                 ceres::LocalParameterization *q_parameterization = new ceres::EigenQuaternionParameterization();
                 ceres::Problem::Options problem_options;
@@ -247,7 +248,6 @@ int main(int argc, char **argv){
                         corner_correspondence++;
                     }
                 }
-                ROS_INFO_STREAM("Corner correspondence: " << corner_correspondence);        // about 270
 
 
                 // STEP 3.2. Planer points
@@ -312,14 +312,17 @@ int main(int argc, char **argv){
                         }
                     }
                 }
+                ROS_INFO_STREAM("[Number] corner: " << corner_correspondence << ", planer: " << plane_correspondence); // about 270
 
                 // STEP 3.3 Optimize
+                TicToc t_optimize;
                 ceres::Solver::Options options;
                 options.linear_solver_type = ceres::DENSE_QR;
                 options.max_num_iterations = 4;
                 options.minimizer_progress_to_stdout = false;
                 ceres::Solver::Summary summary;
                 ceres::Solve(options, &problem, &summary);
+                ROS_WARN_STREAM("[Optimize time]: "<<t_optimize.toc());
             }
 
 
