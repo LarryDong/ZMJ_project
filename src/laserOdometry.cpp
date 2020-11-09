@@ -399,6 +399,25 @@ int main(int argc, char **argv){
         laserCloudSurfLastNum = laserCloudSurfLast->points.size();
         kdtreeSurfLast->setInputCloud(laserCloudSurfLast);
 
+        // pub last data.
+        sensor_msgs::PointCloud2 laserCloudCornerLast2;
+        pcl::toROSMsg(*laserCloudCornerLast, laserCloudCornerLast2);
+        laserCloudCornerLast2.header.stamp = ros::Time().fromSec(timeSurfPointsLessFlat);
+        laserCloudCornerLast2.header.frame_id = "/laser_link";
+        pubLaserCloudCornerLast.publish(laserCloudCornerLast2);
+
+        sensor_msgs::PointCloud2 laserCloudSurfLast2;
+        pcl::toROSMsg(*laserCloudSurfLast, laserCloudSurfLast2);
+        laserCloudSurfLast2.header.stamp = ros::Time().fromSec(timeSurfPointsLessFlat);
+        laserCloudSurfLast2.header.frame_id = "/laser_link";
+        pubLaserCloudSurfLast.publish(laserCloudSurfLast2);
+
+        sensor_msgs::PointCloud2 laserCloudFullRes3;
+        pcl::toROSMsg(*laserCloudFullRes, laserCloudFullRes3);
+        laserCloudFullRes3.header.stamp = ros::Time().fromSec(timeSurfPointsLessFlat);
+        laserCloudFullRes3.header.frame_id = "/laser_link";
+        pubLaserCloudFullRes.publish(laserCloudFullRes3);
+
         gt_total = t_total.toc();
         ROS_INFO_STREAM("Time: " << gt_total << ". getData: " << gt_getData << ", associate: " << gt_associate
                                  << ", optimize(num): " << gt_solve << "(" << corner_correspondence << "/" << plane_correspondence << ")");
