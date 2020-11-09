@@ -1,0 +1,6 @@
+<launch>
+    
+    <node pkg="slam" type="laserOdometry_node" name="laserOdometry_node" output="screen" />
+    
+
+</launch>

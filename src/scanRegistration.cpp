@@ -18,12 +18,18 @@ using std::cos;
 using std::sin;
 
 // global settings.
-const int N_SCANS = 32, USED_SCANS = 16;
-const double DS_SIZE = 0.4;            // less-flat point down-sampling size
-const double MINIMUM_RANGE = 1;   // delete too-near points 
-const int SKIP_NUM = 5;             // skip every `SKIP_NUM sweep (odom thread cannot handle on real-time)
+const int N_SCANS = 32;
 int g_skip_counter = 0;
 const bool PUB_EACH_LINE = false;   // pub each-line, for debug.
+
+// global parameters from launch.file
+double g_min_range = 1.0;
+int g_skip_frame = 2;               // skip every `SKIP_NUM sweep (odom thread cannot handle on real-time)
+int g_used_scans = 16;
+int g_sector_num = 6;
+int g_sharp_num = 2, g_sharpless_num = 20;
+int g_flat_num = 4;
+double g_flatless_ds = 0.4;
 
 // const int systemDelay = 0;
 // int systemInitCount = 0;
@@ -71,7 +77,7 @@ void removeClosedPointCloud(const pcl::PointCloud<PointT> &cloud_in, pcl::PointC
 // main handler
 void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
     g_skip_counter++;
-    if(g_skip_counter%SKIP_NUM !=0 )
+    if (g_skip_counter % g_skip_frame != 0)
         return; 
 
     // if (!systemInited){ 
@@ -84,15 +90,15 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
     // }
 
     TicToc t_whole;
-    std::vector<int> scanStartInd(USED_SCANS, 0);
-    std::vector<int> scanEndInd(USED_SCANS, 0);
+    std::vector<int> scanStartInd(g_used_scans, 0);
+    std::vector<int> scanEndInd(g_used_scans, 0);
 
     pcl::PointCloud<pcl::PointXYZ> laserCloudIn; // 输入点云，pcl点云格式
     pcl::fromROSMsg(*laserCloudMsg, laserCloudIn); // 将传入的ros消息格式转为pcl库里的点云格式
     std::vector<int> indices;
 
     pcl::removeNaNFromPointCloud(laserCloudIn, laserCloudIn, indices); // 去除无效点
-    removeClosedPointCloud(laserCloudIn, laserCloudIn, MINIMUM_RANGE); // // 去除一些距离激光雷达过近的点，通常这些点被认为是不可靠的
+    removeClosedPointCloud(laserCloudIn, laserCloudIn, g_min_range); // // 去除一些距离激光雷达过近的点，通常这些点被认为是不可靠的
 
     int cloudSize = laserCloudIn.points.size();
     // 激光雷达旋转的起始角度，用第一个点来计算
@@ -154,7 +160,7 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
 
     pcl::PointCloud<PointType>::Ptr laserCloud(new pcl::PointCloud<PointType>());
     // 记录每一层起始点和终止点的位置，需要根据这个起始/终止来操作点云曲率，在求曲率的过程中已经去除了前5个点和后5个点
-    for (int i = 0; i < USED_SCANS; i++){ 
+    for (int i = 0; i < g_used_scans; i++){ 
         scanStartInd[i] = laserCloud->size() + 5;
         *laserCloud += laserCloudScans[i];
         scanEndInd[i] = laserCloud->size() - 6;
@@ -176,14 +182,14 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
     pcl::PointCloud<PointType> surfPointsLessFlat;
 
     float t_q_sort = 0;
-    for (int i = 0; i < USED_SCANS; i++){
+    for (int i = 0; i < g_used_scans; i++){
         if( scanEndInd[i] - scanStartInd[i] < 6)
             continue;
         pcl::PointCloud<PointType>::Ptr surfPointsLessFlatScan(new pcl::PointCloud<PointType>);
-        for (int j = 0; j < 6; j++){ // 将点云均分成6块区域，每块区域选取一定数量的Edge Points，和Planar Points
+        for (int j = 0; j < g_sector_num; j++){ // 将点云均分成6块区域，每块区域选取一定数量的Edge Points，和Planar Points
             // 每块区域的开始点和结束点
-            int sp = scanStartInd[i] + (scanEndInd[i] - scanStartInd[i]) * j / 6; 
-            int ep = scanStartInd[i] + (scanEndInd[i] - scanStartInd[i]) * (j + 1) / 6 - 1;
+            int sp = scanStartInd[i] + (scanEndInd[i] - scanStartInd[i]) * j / g_sector_num; 
+            int ep = scanStartInd[i] + (scanEndInd[i] - scanStartInd[i]) * (j + 1) / g_sector_num - 1;
 
             std::sort (cloudSortInd + sp, cloudSortInd + ep + 1, comp);
             int largestPickedNum = 0;
@@ -192,12 +198,12 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
 
                 if (cloudNeighborPicked[ind] == 0 && cloudCurvature[ind] > 0.1){
                     largestPickedNum++;
-                    if (largestPickedNum <= 2){
+                    if (largestPickedNum <= g_sharp_num){
                         cloudLabel[ind] = 2; // 标签为2表示cornerPointsSharp
                         cornerPointsSharp.push_back(laserCloud->points[ind]);
                         cornerPointsLessSharp.push_back(laserCloud->points[ind]);
                     }
-                    else if (largestPickedNum <= 20){                        
+                    else if (largestPickedNum <= g_sharpless_num){                        
                         cloudLabel[ind] = 1; // 标签为1表示cornerPointsLessSharp
                         cornerPointsLessSharp.push_back(laserCloud->points[ind]);
                     }
@@ -228,12 +234,14 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
             int smallestPickedNum = 0;
             // 相似的方法选取Planar Points
             for (int k = sp; k <= ep; k++) { // 曲率从小到大遍历点云
+                if (g_flat_num == 0)         // skip if setting 0 planar points.
+                    break;
                 int ind = cloudSortInd[k];
                 if (cloudNeighborPicked[ind] == 0 && cloudCurvature[ind] < 0.1){
                     cloudLabel[ind] = -1; 
                     surfPointsFlat.push_back(laserCloud->points[ind]);
                     smallestPickedNum++;
-                    if (smallestPickedNum >= 4) 
+                    if (smallestPickedNum >= g_flat_num) 
                         break;
                     cloudNeighborPicked[ind] = 1;
                     for (int l = 1; l <= 5; l++){ 
@@ -266,7 +274,7 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
         pcl::PointCloud<PointType> surfPointsLessFlatScanDS;
         pcl::VoxelGrid<PointType> downSizeFilter;
         downSizeFilter.setInputCloud(surfPointsLessFlatScan);
-        downSizeFilter.setLeafSize(DS_SIZE, DS_SIZE, DS_SIZE);
+        downSizeFilter.setLeafSize(g_flatless_ds, g_flatless_ds, g_flatless_ds);
         downSizeFilter.filter(surfPointsLessFlatScanDS);
         surfPointsLessFlat += surfPointsLessFlatScanDS;
     }
@@ -306,7 +314,7 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
     pubSurfPointsLessFlat.publish(surfPointsLessFlat2);
 
     if(PUB_EACH_LINE) {
-        for(int i = 0; i< USED_SCANS; i++){
+        for(int i = 0; i< g_used_scans; i++){
             sensor_msgs::PointCloud2 scanMsg;
             pcl::toROSMsg(laserCloudScans[i], scanMsg);
             scanMsg.header.stamp = laserCloudMsg->header.stamp;
@@ -326,9 +334,30 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
 
 int main(int argc, char **argv){
 
+
     ros::init(argc, argv, "scanRegistration");
     ros::NodeHandle nh;
     ROS_INFO("Scan registration node begin...");
+
+    // load settings.
+    nh.param<int>("use_scan", g_used_scans, 16); // 激光雷达的线束
+    nh.param<int>("sector_num", g_sector_num, 6);
+    nh.param<int>("sharp_num", g_sharp_num, 2);
+    nh.param<int>("sharpless_num", g_sharpless_num, 20);
+    nh.param<int>("flat_num", g_flat_num, 2);
+    nh.param<double>("flatless_ds", g_flatless_ds, 0.4);
+    nh.param<int>("skip_frame", g_skip_frame, 2);
+    nh.param<double>("min_range", g_min_range, 0.8);
+    
+
+    ROS_WARN_STREAM("Scan Number: " << g_used_scans);
+    ROS_WARN_STREAM("Sector Num: " << g_sector_num);
+    ROS_WARN_STREAM("sharp: " << g_sharp_num);
+    ROS_WARN_STREAM("less-sharp: " << g_sharpless_num);
+    ROS_WARN_STREAM("flat: " << g_flat_num);
+    ROS_WARN_STREAM("less-flat downsampling: " << g_flatless_ds);
+    ROS_WARN_STREAM("skip frame: " << g_skip_frame << ", (frequency: " << 20 / g_skip_frame << " Hz).");
+    ROS_WARN_STREAM("min_range: " << g_min_range);
 
     // sub pointcloud from lslidar
     ros::Subscriber subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/lslidar_point_cloud", 100, laserCloudHandler);
@@ -342,7 +371,7 @@ int main(int argc, char **argv){
     // pubRemovePoints = nh.advertise<sensor_msgs::PointCloud2>("/laser_remove_points", 100);      //~ not subscribed by anyone.
 
     if(PUB_EACH_LINE){
-        for(int i = 0; i < USED_SCANS; i++){
+        for(int i = 0; i < g_used_scans; i++){
             ros::Publisher tmp = nh.advertise<sensor_msgs::PointCloud2>("/laser_scanid_" + std::to_string(i), 100);
             pubEachScan.push_back(tmp);
         }
