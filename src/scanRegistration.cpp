@@ -50,7 +50,7 @@ ros::Publisher pubSurfPointsLessFlat;
 // ros::Publisher pubRemovePoints;
 std::vector<ros::Publisher> pubEachScan;
 
-
+ros::Time g_cloud_input_time = ros::Time();
 
 template <typename PointT>
 void removeClosedPointCloud(const pcl::PointCloud<PointT> &cloud_in, pcl::PointCloud<PointT> &cloud_out, float thres){
@@ -76,6 +76,8 @@ void removeClosedPointCloud(const pcl::PointCloud<PointT> &cloud_in, pcl::PointC
 
 // main handler
 void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
+    // printf("Cloud msg time: %f \n", laserCloudMsg->header.stamp.toSec());
+    g_cloud_input_time = ros::Time();
     g_skip_counter++;
     if (g_skip_counter % g_skip_frame != 0)
         return; 
@@ -283,33 +285,35 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
     // Pub 1: full full cloud;
     sensor_msgs::PointCloud2 laserCloudOutMsg;
     pcl::toROSMsg(*laserCloud, laserCloudOutMsg);
-    laserCloudOutMsg.header.stamp = laserCloudMsg->header.stamp;
+    // laserCloudOutMsg.header.stamp = laserCloudMsg->header.stamp;
+    laserCloudOutMsg.header.stamp = g_cloud_input_time;
     laserCloudOutMsg.header.frame_id = "/laser_link";
+    
     pubLaserCloud.publish(laserCloudOutMsg);
 
     // pub 2: corners/less-sharp corners
     sensor_msgs::PointCloud2 cornerPointsSharpMsg;
     pcl::toROSMsg(cornerPointsSharp, cornerPointsSharpMsg);
-    cornerPointsSharpMsg.header.stamp = laserCloudMsg->header.stamp;
+    cornerPointsSharpMsg.header.stamp = g_cloud_input_time;
     cornerPointsSharpMsg.header.frame_id = "/laser_link";
     pubCornerPointsSharp.publish(cornerPointsSharpMsg);
     // less sharp corners
     sensor_msgs::PointCloud2 cornerPointsLessSharpMsg;
     pcl::toROSMsg(cornerPointsLessSharp, cornerPointsLessSharpMsg);
-    cornerPointsLessSharpMsg.header.stamp = laserCloudMsg->header.stamp;
+    cornerPointsLessSharpMsg.header.stamp = g_cloud_input_time;
     cornerPointsLessSharpMsg.header.frame_id = "/laser_link";
     pubCornerPointsLessSharp.publish(cornerPointsLessSharpMsg);
 
     // pub 3: planers
     sensor_msgs::PointCloud2 surfPointsFlat2;
     pcl::toROSMsg(surfPointsFlat, surfPointsFlat2);
-    surfPointsFlat2.header.stamp = laserCloudMsg->header.stamp;
+    surfPointsFlat2.header.stamp = g_cloud_input_time;
     surfPointsFlat2.header.frame_id = "/laser_link";
     pubSurfPointsFlat.publish(surfPointsFlat2);
     // less flat points.
     sensor_msgs::PointCloud2 surfPointsLessFlat2;
     pcl::toROSMsg(surfPointsLessFlat, surfPointsLessFlat2);
-    surfPointsLessFlat2.header.stamp = laserCloudMsg->header.stamp;
+    surfPointsLessFlat2.header.stamp = g_cloud_input_time;
     surfPointsLessFlat2.header.frame_id = "/laser_link";
     pubSurfPointsLessFlat.publish(surfPointsLessFlat2);
 
@@ -317,7 +321,7 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
         for(int i = 0; i< g_used_scans; i++){
             sensor_msgs::PointCloud2 scanMsg;
             pcl::toROSMsg(laserCloudScans[i], scanMsg);
-            scanMsg.header.stamp = laserCloudMsg->header.stamp;
+            scanMsg.header.stamp = g_cloud_input_time;
             scanMsg.header.frame_id = "/laser_link";
             pubEachScan[i].publish(scanMsg);
         }
