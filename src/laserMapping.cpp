@@ -78,6 +78,13 @@ const int laserCloudWidth = 21;
 const int laserCloudHeight = 21;
 const int laserCloudDepth = 11;
 
+// int laserCloudCenWidth = 3;
+// int laserCloudCenHeight = 3;
+// int laserCloudCenDepth = 1;
+// const int laserCloudWidth = 7;
+// const int laserCloudHeight = 7;
+// const int laserCloudDepth = 3;
+
 
 const int laserCloudNum = laserCloudWidth * laserCloudHeight * laserCloudDepth; //4851
 
@@ -89,14 +96,12 @@ int laserCloudSurroundInd[125];
 pcl::PointCloud<PointType>::Ptr laserCloudCornerLast(new pcl::PointCloud<PointType>());
 pcl::PointCloud<PointType>::Ptr laserCloudSurfLast(new pcl::PointCloud<PointType>());
 
-// ouput: all visualble cube points
-pcl::PointCloud<PointType>::Ptr laserCloudSurround(new pcl::PointCloud<PointType>());
+// // ouput: all visualble cube points
+// pcl::PointCloud<PointType>::Ptr laserCloudSurround(new pcl::PointCloud<PointType>());
 
 // surround points in map to build tree
 pcl::PointCloud<PointType>::Ptr laserCloudCornerFromMap(new pcl::PointCloud<PointType>());
 pcl::PointCloud<PointType>::Ptr laserCloudSurfFromMap(new pcl::PointCloud<PointType>());
-
-//input & output: points in one frame. local --> global
 pcl::PointCloud<PointType>::Ptr laserCloudFullRes(new pcl::PointCloud<PointType>());
 
 // points in every cube
@@ -139,14 +144,12 @@ ros::Publisher pubLaserCloudSurround, pubLaserCloudMap, pubLaserCloudFullRes, pu
 nav_msgs::Path laserAfterMappedPath;
 
 // set initial guess
-void transformAssociateToMap()
-{
+void transformAssociateToMap(){
 	q_w_curr = q_wmap_wodom * q_wodom_curr;
 	t_w_curr = q_wmap_wodom * t_wodom_curr + t_wmap_wodom;
 }
 
-void transformUpdate()
-{
+void transformUpdate(){
 	q_wmap_wodom = q_w_curr * q_wodom_curr.inverse();
 	t_wmap_wodom = t_w_curr - q_wmap_wodom * t_wodom_curr;
 }
@@ -266,16 +269,13 @@ void process() // 主线程
 			timeLaserCloudFullRes = fullResBuf.front()->header.stamp.toSec();
 			timeLaserOdometry = odometryBuf.front()->header.stamp.toSec();
 
-			if (timeLaserCloudCornerLast != timeLaserOdometry ||
-				timeLaserCloudSurfLast != timeLaserOdometry ||
-				timeLaserCloudFullRes != timeLaserOdometry)
-			{
+			if (timeLaserCloudCornerLast != timeLaserOdometry || timeLaserCloudSurfLast != timeLaserOdometry ||timeLaserCloudFullRes != timeLaserOdometry){
 				printf("time corner %f surf %f full %f odom %f \n", timeLaserCloudCornerLast, timeLaserCloudSurfLast, timeLaserCloudFullRes, timeLaserOdometry);
-				printf("unsync messeage!");
+				ROS_ERROR("unsync messeage!!!");
                 cornerLastBuf.pop();
 				mBuf.unlock();
-				// break;
-                continue;
+				break;
+                // continue;
 			}
 
 			// ros消息转换成pcl消息
@@ -758,34 +758,24 @@ void process() // 主线程
 				if (pointSel.z + 25.0 < 0)
 					cubeK--;
 
-				if (cubeI >= 0 && cubeI < laserCloudWidth &&
-					cubeJ >= 0 && cubeJ < laserCloudHeight &&
-					cubeK >= 0 && cubeK < laserCloudDepth)
-				{
+				if (cubeI >= 0 && cubeI < laserCloudWidth && cubeJ >= 0 && cubeJ < laserCloudHeight && cubeK >= 0 && cubeK < laserCloudDepth){
 					int cubeInd = cubeI + laserCloudWidth * cubeJ + laserCloudWidth * laserCloudHeight * cubeK;
 					laserCloudCornerArray[cubeInd]->push_back(pointSel);
 				}
 			}
 
-			for (int i = 0; i < laserCloudSurfStackNum; i++)
-			{
+			for (int i = 0; i < laserCloudSurfStackNum; i++){
 				pointAssociateToMap(&laserCloudSurfStack->points[i], &pointSel);
-
 				int cubeI = int((pointSel.x + 25.0) / 50.0) + laserCloudCenWidth;
 				int cubeJ = int((pointSel.y + 25.0) / 50.0) + laserCloudCenHeight;
 				int cubeK = int((pointSel.z + 25.0) / 50.0) + laserCloudCenDepth;
-
 				if (pointSel.x + 25.0 < 0)
 					cubeI--;
 				if (pointSel.y + 25.0 < 0)
 					cubeJ--;
 				if (pointSel.z + 25.0 < 0)
 					cubeK--;
-
-				if (cubeI >= 0 && cubeI < laserCloudWidth &&
-					cubeJ >= 0 && cubeJ < laserCloudHeight &&
-					cubeK >= 0 && cubeK < laserCloudDepth)
-				{
+				if (cubeI >= 0 && cubeI < laserCloudWidth &&cubeJ >= 0 && cubeJ < laserCloudHeight &&cubeK >= 0 && cubeK < laserCloudDepth){
 					int cubeInd = cubeI + laserCloudWidth * cubeJ + laserCloudWidth * laserCloudHeight * cubeK;
 					laserCloudSurfArray[cubeInd]->push_back(pointSel);
 				}
@@ -811,28 +801,28 @@ void process() // 主线程
 			printf("filter time %f ms \n", t_filter.toc());
 			
 			TicToc t_pub;
-			//publish surround map for every 5 frame 发布地图消息，附近点地图
-			if (frameCount % 5 == 0)
-			{
-				laserCloudSurround->clear();
-				for (int i = 0; i < laserCloudSurroundNum; i++)
-				{
-					int ind = laserCloudSurroundInd[i];
-					*laserCloudSurround += *laserCloudCornerArray[ind];
-					*laserCloudSurround += *laserCloudSurfArray[ind];
-				}
+			// //publish surround map for every 5 frame 发布地图消息，附近点地图  ~ NOT used.
+			// if (frameCount % 2 == 0)
+			// {
+			// 	laserCloudSurround->clear();
+			// 	for (int i = 0; i < laserCloudSurroundNum; i++)
+			// 	{
+			// 		int ind = laserCloudSurroundInd[i];
+			// 		*laserCloudSurround += *laserCloudCornerArray[ind];
+			// 		*laserCloudSurround += *laserCloudSurfArray[ind];
+			// 	}
 
-				sensor_msgs::PointCloud2 laserCloudSurround3;
-				pcl::toROSMsg(*laserCloudSurround, laserCloudSurround3);
-				laserCloudSurround3.header.stamp = ros::Time().fromSec(timeLaserOdometry);
-				laserCloudSurround3.header.frame_id = "/laser_link";
-				pubLaserCloudSurround.publish(laserCloudSurround3);
-			}
+			// 	sensor_msgs::PointCloud2 laserCloudSurround3;
+			// 	pcl::toROSMsg(*laserCloudSurround, laserCloudSurrround3);
+			// 	laserCloudSurround3.header.stamp = ros::Time().fromSec(timeLaserOdometry);
+			// 	laserCloudSurround3.header.frame_id = "/laser_link";
+			// 	pubLaserCloudSurround.publish(laserCloudSurround3);
+			// }
 
-			if (frameCount % 20 == 0) // 发布地图消息，大地图
+			if (frameCount % 5 == 0) // 发布地图消息，大地图
 			{
 				pcl::PointCloud<PointType> laserCloudMap;
-				for (int i = 0; i < 4851; i++)
+				for (int i = 0; i < laserCloudNum; i++)
 				{
 					laserCloudMap += *laserCloudCornerArray[i];
 					laserCloudMap += *laserCloudSurfArray[i];
@@ -842,6 +832,12 @@ void process() // 主线程
 				laserCloudMsg.header.stamp = ros::Time().fromSec(timeLaserOdometry);
 				laserCloudMsg.header.frame_id = "/laser_link";
 				pubLaserCloudMap.publish(laserCloudMsg);
+				ROS_ERROR("Corner array size: ");
+				for(int i=0; i<laserCloudNum; ++i){
+					if(laserCloudCornerArray[i]->size()!=0){
+						ROS_WARN_STREAM(i<<" not empty: "<<laserCloudCornerArray[i]->size());
+					}
+				}
 			}
 
 			// 将激光点转换到世界坐标系下并发布，可视化用

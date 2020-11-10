@@ -34,10 +34,12 @@
 // global settings.
 constexpr double DISTANCE_SQ_THRESHOLD = 25; // 找最近点的距离平方的阈值
 constexpr double NEARBY_SCAN = 2.5; // 找点时最远激光层的阈值
+int g_SKIP_FRAME = 2;
 
 // global variables
 int corner_correspondence = 0, plane_correspondence = 0;
 int laserCloudCornerLastNum = 0, laserCloudSurfLastNum = 0;
+int g_skip_counter = 0;
 
 bool systemInited = false;
 double timeCornerPointsSharp = 0;
@@ -400,23 +402,27 @@ int main(int argc, char **argv){
         kdtreeSurfLast->setInputCloud(laserCloudSurfLast);
 
         // pub last data.
-        sensor_msgs::PointCloud2 laserCloudCornerLast2;
-        pcl::toROSMsg(*laserCloudCornerLast, laserCloudCornerLast2);
-        laserCloudCornerLast2.header.stamp = ros::Time().fromSec(timeSurfPointsLessFlat);
-        laserCloudCornerLast2.header.frame_id = "/laser_link";
-        pubLaserCloudCornerLast.publish(laserCloudCornerLast2);
+        g_skip_counter++;
+        if(g_skip_counter % g_SKIP_FRAME == 0){
+            sensor_msgs::PointCloud2 laserCloudCornerLast2;
+            pcl::toROSMsg(*laserCloudCornerLast, laserCloudCornerLast2);
+            laserCloudCornerLast2.header.stamp = ros::Time().fromSec(timeSurfPointsLessFlat);
+            laserCloudCornerLast2.header.frame_id = "/laser_link";
+            pubLaserCloudCornerLast.publish(laserCloudCornerLast2);
 
-        sensor_msgs::PointCloud2 laserCloudSurfLast2;
-        pcl::toROSMsg(*laserCloudSurfLast, laserCloudSurfLast2);
-        laserCloudSurfLast2.header.stamp = ros::Time().fromSec(timeSurfPointsLessFlat);
-        laserCloudSurfLast2.header.frame_id = "/laser_link";
-        pubLaserCloudSurfLast.publish(laserCloudSurfLast2);
+            sensor_msgs::PointCloud2 laserCloudSurfLast2;
+            pcl::toROSMsg(*laserCloudSurfLast, laserCloudSurfLast2);
+            laserCloudSurfLast2.header.stamp = ros::Time().fromSec(timeSurfPointsLessFlat);
+            laserCloudSurfLast2.header.frame_id = "/laser_link";
+            pubLaserCloudSurfLast.publish(laserCloudSurfLast2);
 
-        sensor_msgs::PointCloud2 laserCloudFullRes3;
-        pcl::toROSMsg(*laserCloudFullRes, laserCloudFullRes3);
-        laserCloudFullRes3.header.stamp = ros::Time().fromSec(timeSurfPointsLessFlat);
-        laserCloudFullRes3.header.frame_id = "/laser_link";
-        pubLaserCloudFullRes.publish(laserCloudFullRes3);
+            sensor_msgs::PointCloud2 laserCloudFullRes3;
+            pcl::toROSMsg(*laserCloudFullRes, laserCloudFullRes3);
+            laserCloudFullRes3.header.stamp = ros::Time().fromSec(timeSurfPointsLessFlat);
+            laserCloudFullRes3.header.frame_id = "/laser_link";
+            pubLaserCloudFullRes.publish(laserCloudFullRes3);
+            g_skip_counter = 0;
+        }
 
         gt_total = t_total.toc();
         ROS_INFO_STREAM("Time: " << gt_total << ". getData: " << gt_getData << ", associate: " << gt_associate
