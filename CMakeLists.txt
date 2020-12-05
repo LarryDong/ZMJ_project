@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(slam)
+set(CMAKE_BUILD_TYPE "Release")
+
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 add_compile_options(-std=c++11)
@@ -38,9 +40,9 @@ include_directories(
 
 add_executable(scanRegistration_node src/scanRegistration.cpp)
 add_executable(laserOdometry_node src/laserOdometry.cpp)
-# add_executable(mapping_node src/mapping.cpp)
+add_executable(laserMapping_node src/laserMapping.cpp)
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(scanRegistration_node ${catkin_LIBRARIES} ${OpenCV_LIBS})
 target_link_libraries(laserOdometry_node ${catkin_LIBRARIES} ${OpenCV_LIBS} ${CERES_LIBRARIES})
-# target_link_libraries(mapping_node ${catkin_LIBRARIES} ${OpenCV_LIBS})
+target_link_libraries(laserMapping_node ${catkin_LIBRARIES} ${OpenCV_LIBS} ${CERES_LIBRARIES})

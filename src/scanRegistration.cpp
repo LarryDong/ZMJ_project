@@ -24,8 +24,8 @@ const bool PUB_EACH_LINE = false;   // pub each-line, for debug.
 
 // global parameters from launch.file
 double g_min_range = 1.0;
-int g_skip_frame = 2;               // skip every `SKIP_NUM sweep (odom thread cannot handle on real-time)
-int g_used_scans = 16;
+int g_scan_skip = 0;                // skip every `scan_skip scans.
+int g_used_scans = 32;               // scan numbers = total-scan-number / (scan_skip+1);
 int g_sector_num = 6;
 int g_sharp_num = 2, g_sharpless_num = 20;
 int g_flat_num = 4;
@@ -50,7 +50,7 @@ ros::Publisher pubSurfPointsLessFlat;
 // ros::Publisher pubRemovePoints;
 std::vector<ros::Publisher> pubEachScan;
 
-
+ros::Time g_cloud_input_time = ros::Time();
 
 template <typename PointT>
 void removeClosedPointCloud(const pcl::PointCloud<PointT> &cloud_in, pcl::PointCloud<PointT> &cloud_out, float thres){
@@ -76,8 +76,10 @@ void removeClosedPointCloud(const pcl::PointCloud<PointT> &cloud_in, pcl::PointC
 
 // main handler
 void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
+    // printf("Cloud msg time: %f \n", laserCloudMsg->header.stamp.toSec());
+    g_cloud_input_time = ros::Time();
     g_skip_counter++;
-    if (g_skip_counter % g_skip_frame != 0)
+    if (g_skip_counter % (g_scan_skip+1) != 0)
         return; 
 
     // if (!systemInited){ 
@@ -117,7 +119,10 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
     int count = 0; // 去除掉一些非法点之后的点云数量
     PointType point;
     std::vector<pcl::PointCloud<PointType>> laserCloudScans(N_SCANS);
+
+
     // 将所有点云按不同的线束分别放在laserCloudScans的数组里，并计算每个点在该线束中根据起始和终点计算的位置（时间）
+    int id_counter = 0;
     for (int i = 0; i < cloudSize; i++){
         point.x = laserCloudIn.points[i].x;
         point.y = laserCloudIn.points[i].y;
@@ -126,10 +131,10 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
         // 计算每个3d点有关于激光雷达原点连线的俯仰角，以此来判断该点云是哪层线束的激光
         float angle = atan(point.z / sqrt(point.x * point.x + point.y * point.y)) * 180 / M_PI;
         int scanID = int(angle + 17);
-        if (scanID % 2 != 0)                // skip half scans.
+        if (scanID % (g_scan_skip+1) != 0)                // skip half scans.
             continue;
 
-        int selectedID = int(scanID / 2);   //
+        int selectedID = scanID / (g_scan_skip + 1);
         float ori = -atan2(point.y, point.x); // 计算每个点云和激光雷达原点连线的航向角
         if (!halfPassed){ // 根据扫描线是否旋转过半选择与起始位置还是终止位置进行差值计算
             // 确保-3*pi/2 < ori - endOri < pi/2
@@ -283,33 +288,35 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
     // Pub 1: full full cloud;
     sensor_msgs::PointCloud2 laserCloudOutMsg;
     pcl::toROSMsg(*laserCloud, laserCloudOutMsg);
-    laserCloudOutMsg.header.stamp = laserCloudMsg->header.stamp;
+    // laserCloudOutMsg.header.stamp = laserCloudMsg->header.stamp;
+    laserCloudOutMsg.header.stamp = g_cloud_input_time;
     laserCloudOutMsg.header.frame_id = "/laser_link";
+    
     pubLaserCloud.publish(laserCloudOutMsg);
 
     // pub 2: corners/less-sharp corners
     sensor_msgs::PointCloud2 cornerPointsSharpMsg;
     pcl::toROSMsg(cornerPointsSharp, cornerPointsSharpMsg);
-    cornerPointsSharpMsg.header.stamp = laserCloudMsg->header.stamp;
+    cornerPointsSharpMsg.header.stamp = g_cloud_input_time;
     cornerPointsSharpMsg.header.frame_id = "/laser_link";
     pubCornerPointsSharp.publish(cornerPointsSharpMsg);
     // less sharp corners
     sensor_msgs::PointCloud2 cornerPointsLessSharpMsg;
     pcl::toROSMsg(cornerPointsLessSharp, cornerPointsLessSharpMsg);
-    cornerPointsLessSharpMsg.header.stamp = laserCloudMsg->header.stamp;
+    cornerPointsLessSharpMsg.header.stamp = g_cloud_input_time;
     cornerPointsLessSharpMsg.header.frame_id = "/laser_link";
     pubCornerPointsLessSharp.publish(cornerPointsLessSharpMsg);
 
     // pub 3: planers
     sensor_msgs::PointCloud2 surfPointsFlat2;
     pcl::toROSMsg(surfPointsFlat, surfPointsFlat2);
-    surfPointsFlat2.header.stamp = laserCloudMsg->header.stamp;
+    surfPointsFlat2.header.stamp = g_cloud_input_time;
     surfPointsFlat2.header.frame_id = "/laser_link";
     pubSurfPointsFlat.publish(surfPointsFlat2);
     // less flat points.
     sensor_msgs::PointCloud2 surfPointsLessFlat2;
     pcl::toROSMsg(surfPointsLessFlat, surfPointsLessFlat2);
-    surfPointsLessFlat2.header.stamp = laserCloudMsg->header.stamp;
+    surfPointsLessFlat2.header.stamp = g_cloud_input_time;
     surfPointsLessFlat2.header.frame_id = "/laser_link";
     pubSurfPointsLessFlat.publish(surfPointsLessFlat2);
 
@@ -317,46 +324,47 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
         for(int i = 0; i< g_used_scans; i++){
             sensor_msgs::PointCloud2 scanMsg;
             pcl::toROSMsg(laserCloudScans[i], scanMsg);
-            scanMsg.header.stamp = laserCloudMsg->header.stamp;
+            scanMsg.header.stamp = g_cloud_input_time;
             scanMsg.header.frame_id = "/laser_link";
             pubEachScan[i].publish(scanMsg);
         }
     }
 
-    ROS_INFO_STREAM("Time: " << t_whole.toc() << ", Points: "
-                             << ", corner: " << cornerPointsSharp.size() << "/" << cornerPointsLessSharp.size()
-                             << ", planer: " << surfPointsFlat.size() << "/" << surfPointsLessFlat.size());
+    ROS_INFO_STREAM("Time: " << t_whole.toc()
+                            << ", corner: " << cornerPointsSharp.size() << "/" << cornerPointsLessSharp.size()
+                            << ", planer: " << surfPointsFlat.size() << "/" << surfPointsLessFlat.size());
 
-    if(t_whole.toc() > 100)
+    if(t_whole.toc() > 50)
         ROS_WARN("scan registration process over 100 ms");
 }
 
 
 int main(int argc, char **argv){
 
-
     ros::init(argc, argv, "scanRegistration");
     ros::NodeHandle nh;
     ROS_INFO("Scan registration node begin...");
 
     // load settings.
-    nh.param<int>("use_scan", g_used_scans, 16); // 激光雷达的线束
+    nh.param<int>("scan_skip", g_scan_skip, 0); // 激光雷达的线束
+    if (32 % (g_scan_skip + 1) != 0){
+        ROS_ERROR_STREAM("Invalid scan_skip: "<<g_scan_skip);
+    }
+    g_used_scans = 32 / (g_scan_skip + 1);
+    
     nh.param<int>("sector_num", g_sector_num, 6);
     nh.param<int>("sharp_num", g_sharp_num, 2);
     nh.param<int>("sharpless_num", g_sharpless_num, 20);
     nh.param<int>("flat_num", g_flat_num, 2);
     nh.param<double>("flatless_ds", g_flatless_ds, 0.4);
-    nh.param<int>("skip_frame", g_skip_frame, 2);
     nh.param<double>("min_range", g_min_range, 0.8);
     
-
     ROS_WARN_STREAM("Scan Number: " << g_used_scans);
     ROS_WARN_STREAM("Sector Num: " << g_sector_num);
     ROS_WARN_STREAM("sharp: " << g_sharp_num);
     ROS_WARN_STREAM("less-sharp: " << g_sharpless_num);
     ROS_WARN_STREAM("flat: " << g_flat_num);
     ROS_WARN_STREAM("less-flat downsampling: " << g_flatless_ds);
-    ROS_WARN_STREAM("skip frame: " << g_skip_frame << ", (frequency: " << 20 / g_skip_frame << " Hz).");
     ROS_WARN_STREAM("min_range: " << g_min_range);
 
     // sub pointcloud from lslidar

@@ -34,10 +34,12 @@
 // global settings.
 constexpr double DISTANCE_SQ_THRESHOLD = 25; // 找最近点的距离平方的阈值
 constexpr double NEARBY_SCAN = 2.5; // 找点时最远激光层的阈值
+int g_SKIP_FRAME = 1;
 
 // global variables
 int corner_correspondence = 0, plane_correspondence = 0;
 int laserCloudCornerLastNum = 0, laserCloudSurfLastNum = 0;
+int g_skip_counter = 0;
 
 bool systemInited = false;
 double timeCornerPointsSharp = 0;
@@ -135,8 +137,6 @@ int main(int argc, char **argv){
     ros::init(argc, argv, "laserOdometry");
     ros::NodeHandle nh;
 
-    // nh.param<int>("mapping_skip_frame", skipFrameNum, 2); // 前端计算的频率，launch默认设置的为1，表示10Hz
-
     ros::Subscriber subLaserCloudFullRes = nh.subscribe<sensor_msgs::PointCloud2>("/lslidar_point_cloud_2", 100, laserCloudFullResHandler);
     ros::Subscriber subCornerPointsSharp = nh.subscribe<sensor_msgs::PointCloud2>("/laser_cloud_sharp", 100, laserCloudSharpHandler);
     ros::Subscriber subCornerPointsLessSharp = nh.subscribe<sensor_msgs::PointCloud2>("/laser_cloud_less_sharp", 100, laserCloudLessSharpHandler);
@@ -211,7 +211,7 @@ int main(int argc, char **argv){
             int cornerPointsSharpNum = cornerPointsSharp->points.size();
             int surfPointsFlatNum = surfPointsFlat->points.size();
 
-            for (size_t opti_counter = 0; opti_counter < 1; ++opti_counter){   // optimize 1/2 times
+            for (size_t opti_counter = 0; opti_counter < 2; ++opti_counter){   // optimize 2 times
             
                 corner_correspondence = 0;
                 plane_correspondence = 0;
@@ -399,9 +399,32 @@ int main(int argc, char **argv){
         laserCloudSurfLastNum = laserCloudSurfLast->points.size();
         kdtreeSurfLast->setInputCloud(laserCloudSurfLast);
 
+        // pub last data.
+        g_skip_counter++;
+        if(g_skip_counter % g_SKIP_FRAME == 0){
+            sensor_msgs::PointCloud2 laserCloudCornerLast2;
+            pcl::toROSMsg(*laserCloudCornerLast, laserCloudCornerLast2);
+            laserCloudCornerLast2.header.stamp = ros::Time().fromSec(timeSurfPointsLessFlat);
+            laserCloudCornerLast2.header.frame_id = "/laser_link";
+            pubLaserCloudCornerLast.publish(laserCloudCornerLast2);
+
+            sensor_msgs::PointCloud2 laserCloudSurfLast2;
+            pcl::toROSMsg(*laserCloudSurfLast, laserCloudSurfLast2);
+            laserCloudSurfLast2.header.stamp = ros::Time().fromSec(timeSurfPointsLessFlat);
+            laserCloudSurfLast2.header.frame_id = "/laser_link";
+            pubLaserCloudSurfLast.publish(laserCloudSurfLast2);
+
+            sensor_msgs::PointCloud2 laserCloudFullRes3;
+            pcl::toROSMsg(*laserCloudFullRes, laserCloudFullRes3);
+            laserCloudFullRes3.header.stamp = ros::Time().fromSec(timeSurfPointsLessFlat);
+            laserCloudFullRes3.header.frame_id = "/laser_link";
+            pubLaserCloudFullRes.publish(laserCloudFullRes3);
+            g_skip_counter = 0;
+        }
+
         gt_total = t_total.toc();
-        ROS_INFO_STREAM("Time: " << gt_total << ". getData: " << gt_getData << ", associate: " << gt_associate
-                                 << ", optimize(num): " << gt_solve << "(" << corner_correspondence << "/" << plane_correspondence << ")");
+        ROS_INFO_STREAM("Time: "<< gt_total << ". getData: " << gt_getData << ", associate: " << gt_associate
+                                << ", optimize(num): " << gt_solve << "(" << corner_correspondence << "/" << plane_correspondence << ")");
     }
 
     rate.sleep();
