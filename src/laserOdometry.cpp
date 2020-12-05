@@ -34,7 +34,7 @@
 // global settings.
 constexpr double DISTANCE_SQ_THRESHOLD = 25; // 找最近点的距离平方的阈值
 constexpr double NEARBY_SCAN = 2.5; // 找点时最远激光层的阈值
-int g_SKIP_FRAME = 2;
+int g_SKIP_FRAME = 1;
 
 // global variables
 int corner_correspondence = 0, plane_correspondence = 0;
@@ -137,8 +137,6 @@ int main(int argc, char **argv){
     ros::init(argc, argv, "laserOdometry");
     ros::NodeHandle nh;
 
-    // nh.param<int>("mapping_skip_frame", skipFrameNum, 2); // 前端计算的频率，launch默认设置的为1，表示10Hz
-
     ros::Subscriber subLaserCloudFullRes = nh.subscribe<sensor_msgs::PointCloud2>("/lslidar_point_cloud_2", 100, laserCloudFullResHandler);
     ros::Subscriber subCornerPointsSharp = nh.subscribe<sensor_msgs::PointCloud2>("/laser_cloud_sharp", 100, laserCloudSharpHandler);
     ros::Subscriber subCornerPointsLessSharp = nh.subscribe<sensor_msgs::PointCloud2>("/laser_cloud_less_sharp", 100, laserCloudLessSharpHandler);
@@ -213,7 +211,7 @@ int main(int argc, char **argv){
             int cornerPointsSharpNum = cornerPointsSharp->points.size();
             int surfPointsFlatNum = surfPointsFlat->points.size();
 
-            for (size_t opti_counter = 0; opti_counter < 1; ++opti_counter){   // optimize 1/2 times
+            for (size_t opti_counter = 0; opti_counter < 2; ++opti_counter){   // optimize 2 times
             
                 corner_correspondence = 0;
                 plane_correspondence = 0;
@@ -425,8 +423,8 @@ int main(int argc, char **argv){
         }
 
         gt_total = t_total.toc();
-        ROS_INFO_STREAM("Time: " << gt_total << ". getData: " << gt_getData << ", associate: " << gt_associate
-                                 << ", optimize(num): " << gt_solve << "(" << corner_correspondence << "/" << plane_correspondence << ")");
+        ROS_INFO_STREAM("Time: "<< gt_total << ". getData: " << gt_getData << ", associate: " << gt_associate
+                                << ", optimize(num): " << gt_solve << "(" << corner_correspondence << "/" << plane_correspondence << ")");
     }
 
     rate.sleep();

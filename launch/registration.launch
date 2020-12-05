@@ -1,15 +1,14 @@
 <launch>
     
-    <param name="use_scan" type="int" value="16" />
-    <param name="sector_num" type="int" value="6" />
+    <param name="scan_skip" type="int" value="0" />
+    <param name="sector_num" type="int" value="8" />
     <param name="sharp_num" type="int" value="2" />
     <param name="sharpless_num" type="int" value="10" />
     <param name="flat_num" type="int" value="2" />
-    <param name="flatless_ds" type="double" value="0.5" />
-    <param name="skip_frame" type="int" value="5" />
-    <param name="min_range" type="double" value="1" />
+    <param name="flatless_ds" type="double" value="0.2" />
+    <param name="skip_frame" type="int" value="1" />
+    <param name="min_range" type="double" value="0.5" />
     
-
     <node pkg="slam" type="scanRegistration_node" name="scanRegistration_node" output="screen" />
 
 </launch>
