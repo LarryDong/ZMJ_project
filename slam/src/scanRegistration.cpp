@@ -368,7 +368,7 @@ int main(int argc, char **argv){
     ROS_WARN_STREAM("min_range: " << g_min_range);
 
     // sub pointcloud from lslidar
-    ros::Subscriber subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/lslidar_point_cloud", 100, laserCloudHandler);
+    ros::Subscriber subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/hor_lidar_points_cloud", 100, laserCloudHandler);
 
     // pub 5 topics.
     pubLaserCloud = nh.advertise<sensor_msgs::PointCloud2>("/lslidar_point_cloud_2", 100);

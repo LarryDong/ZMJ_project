@@ -1,0 +1,18 @@
+
+record rosbags:
+rosbag record -a					# record all topics
+rosbag record /lslidar_packet_difop /lslidar_packet	# record network packets
+
+
+To record lidar and imu data:
+1. roscore
+2. cd ~/lidar_ws/src/lslidar
+3. roslaunch my_launch/driver.my_launch         // launch lidar driver
+4. roslaunch my_launch/decoder.my_launch        // launch lidar decoder
+5. rosrun imu_driver imu_driver_node            // run imu processor
+6. rosbag record /lslidar_packet_difop /lslidar_packet /imu_driver/imu      // record: lidar_packet info, lidar data, and imu
+
+
+
+Test net packages:
+sudo tcpdump -n -i eno1/enp5s0
