@@ -1,10 +1,12 @@
-<launch>
 
 <!--
+    ATTENTION: This file is just a demo to launch one lidar. Run two node: driver and decoder.
 1. Driver's IP address should be changed.
 2. Decoder's output message name should be changed. 
 3. msop_port/difop_port should be different.
 -->
+
+<launch>
 
 <!-- Driver launch. -->
     <arg name="device_ip" default="192.168.1.200" />
@@ -40,8 +42,6 @@
         <param name="scan_num" value="15"/>
         <param name="publish_scan" value="true"/>
         <param name="time_synchronization" value="$(arg time_synchronization)"/>
-
-        
         <param name="output_points_topic" value="hor_lidar_points_cloud" />
 
     </node>
