@@ -1,0 +1,81 @@
+<!-- Launch two lidar at the same time. Created by dongy
+Modified from '/lslidar_c32_decoder/launch/lslidar_c32_double.launch', but in that file some parameters' name are not correct.
+
+Attention:
+1. Two lidar should be run in one .launch file.
+2. Each Lidar's device_ip / msop_port / difop_port, should be set by client software in advance, and launch file should be modified.
+3. node name / topic name, of two lidar should be different. -->
+
+
+<launch>
+
+    <!-- Common configures -->
+    <arg name="return_mode" default="1" />
+    <arg name="degree_mode" value="2"/>
+    <arg name="time_synchronization" default="true" />
+
+<!-- First Lidar -->
+<!-- Driver launch. -->
+    <node pkg="lslidar_c32_driver" type="lslidar_c32_driver_node" name="hor_driver" output="screen" ns="horLidar">
+        <param name="device_ip" value="192.168.1.200" />
+        <param name="msop_port" value="2368" />
+        <param name="difop_port" value="2369"/>
+        <param name="frame_id" value="laser_link"/>
+        <param name="add_multicast" value="false"/>
+        <param name="group_ip" value="224.1.1.2"/>
+        <param name="rpm" value="600"/>
+        <param name="return_mode" value="$(arg return_mode)"/>
+        <param name="degree_mode" value="$(arg degree_mode)"/>
+        <param name="time_synchronization" value="$(arg time_synchronization)"/>
+    </node>
+
+<!-- Decoder launch -->
+    <node pkg="lslidar_c32_decoder" type="lslidar_c32_decoder_node" name="hor_decoder" output="screen" ns="horLidar">
+        <param name="min_range" value="0.15"/>
+        <param name="max_range" value="150.0"/>
+        <param name="degree_mode" value="$(arg degree_mode)"/>
+        <param name="distance_unit" value="0.25"/>
+        <param name="return_mode" value="$(arg return_mode)"/>
+        <param name="config_vert" value="true"/>
+        <param name="print_vert" value="false"/>
+        <param name="scan_frame_id" value="laser_link"/>
+        <param name="scan_num" value="15"/>
+        <param name="publish_scan" value="true"/>
+        <param name="time_synchronization" value="$(arg time_synchronization)"/>
+        <param name="output_points_topic" value="hor_lidar_points_cloud" />
+    </node>
+
+
+
+<!-- Vertical Lidar -->
+<!-- Driver launch. -->
+    <node pkg="lslidar_c32_driver" type="lslidar_c32_driver_node" name="ver_driver" output="screen" ns="verLidar">
+        <param name="device_ip" value="192.168.1.201" />
+        <param name="msop_port" value="2370" />
+        <param name="difop_port" value="2371"/>
+        <param name="frame_id" value="laser_link"/>
+        <param name="add_multicast" value="false"/>
+        <param name="group_ip" value="224.1.1.2"/>
+        <param name="rpm" value="600"/>
+        <param name="return_mode" value="$(arg return_mode)"/>
+        <param name="degree_mode" value="$(arg degree_mode)"/>
+        <param name="time_synchronization" value="$(arg time_synchronization)"/>
+    </node>
+<!-- Decoder launch -->
+    <node pkg="lslidar_c32_decoder" type="lslidar_c32_decoder_node" name="ver_decoder" output="screen" ns="verLidar">
+        <param name="min_range" value="0.15"/>
+        <param name="max_range" value="150.0"/>
+        <param name="degree_mode" value="$(arg degree_mode)"/>
+        <param name="distance_unit" value="0.25"/>
+        <param name="return_mode" value="$(arg return_mode)"/>
+        <param name="config_vert" value="true"/>
+        <param name="print_vert" value="false"/>
+        <param name="scan_frame_id" value="laser_link"/>
+        <param name="scan_num" value="15"/>
+        <param name="publish_scan" value="true"/>
+        <param name="time_synchronization" value="$(arg time_synchronization)"/>
+        <param name="output_points_topic" value="ver_lidar_points_cloud" />
+    </node>
+
+</launch>
+
