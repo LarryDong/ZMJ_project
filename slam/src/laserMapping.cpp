@@ -215,14 +215,15 @@ void process() {
         timeLaserCloudSurfLast = surfLastBuf.front()->header.stamp.toSec();
         timeLaserCloudFullRes = fullResBuf.front()->header.stamp.toSec();
         timeLaserOdometry = odometryBuf.front()->header.stamp.toSec();
-
+        
         if (timeLaserCloudCornerLast != timeLaserOdometry || timeLaserCloudSurfLast != timeLaserOdometry ||timeLaserCloudFullRes != timeLaserOdometry){
+            printf("odom time: %f\n", timeLaserOdometry);
             printf("time corner %f surf %f full %f odom %f \n", timeLaserCloudCornerLast, timeLaserCloudSurfLast, timeLaserCloudFullRes, timeLaserOdometry);
             ROS_ERROR("unsync messeage!!!");
             cornerLastBuf.pop();
             mBuf.unlock();
-            break;
-            // continue;
+            // break;
+            continue;
         }
 
         // ros消息转换成pcl消息

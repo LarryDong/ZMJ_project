@@ -155,7 +155,7 @@ int main(int argc, char **argv){
     ros::Rate rate(100);
 
     while (ros::ok()){
-
+        rate.sleep();
         ros::spinOnce();
 
         // STEP 1. Check sync.
@@ -427,6 +427,6 @@ int main(int argc, char **argv){
                                 << ", optimize(num): " << gt_solve << "(" << corner_correspondence << "/" << plane_correspondence << ")");
     }
 
-    rate.sleep();
+    
     return 0;
 }

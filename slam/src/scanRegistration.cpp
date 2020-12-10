@@ -77,7 +77,8 @@ void removeClosedPointCloud(const pcl::PointCloud<PointT> &cloud_in, pcl::PointC
 // main handler
 void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
     // printf("Cloud msg time: %f \n", laserCloudMsg->header.stamp.toSec());
-    g_cloud_input_time = ros::Time();
+    g_cloud_input_time = ros::Time().now();
+
     g_skip_counter++;
     if (g_skip_counter % (g_scan_skip+1) != 0)
         return; 
@@ -367,8 +368,11 @@ int main(int argc, char **argv){
     ROS_WARN_STREAM("less-flat downsampling: " << g_flatless_ds);
     ROS_WARN_STREAM("min_range: " << g_min_range);
 
+    std::string input_topic_name;
+    nh.param<std::string>("topic_name", input_topic_name, "lslidar_point_cloud");
+    std::cout<<"--------"<<input_topic_name<<" --------"<<std::endl;
     // sub pointcloud from lslidar
-    ros::Subscriber subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>("/hor_lidar_points_cloud", 100, laserCloudHandler);
+    ros::Subscriber subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>(input_topic_name, 100, laserCloudHandler);
 
     // pub 5 topics.
     pubLaserCloud = nh.advertise<sensor_msgs::PointCloud2>("/lslidar_point_cloud_2", 100);

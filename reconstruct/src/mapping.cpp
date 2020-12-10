@@ -26,6 +26,8 @@ std::queue<sensor_msgs::PointCloud2> pointCloudBuf;
 std::queue<nav_msgs::Odometry> odomBuf;
 std::mutex mBuf;
 
+Eigen::Matrix4d T_hor_ver;
+
 const int BuffSize = 100;
 
 void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudPtr){
@@ -58,14 +60,23 @@ int main(int argc, char **argv){
     ros::NodeHandle nh;
     ROS_INFO("Vertical Mapping node begin...");
 
+    T_hor_ver = Eigen::Matrix4d::Identity();
+    Eigen::Matrix3d R_hor_ver;
+    R_hor_ver << 1, 0, 0, 0, 0, 1, 0, 1, 0;
+    Eigen::Vector3d t_hor_ver(0, 0.25, 0.18);
+    T_hor_ver.topLeftCorner(3, 3) = R_hor_ver;
+    T_hor_ver.topRightCorner(3, 1) = t_hor_ver;
+    ROS_INFO_STREAM("T_hor_ver: \n" << T_hor_ver);
+
     std::string input_topic_name;
     nh.param<std::string>("topic_name", input_topic_name, "lslidar_point_cloud");
-    std::cout<<"--------"<<input_topic_name<<" --------"<<std::endl;
+    // std::cout<<"--------"<<input_topic_name<<" --------"<<std::endl;
     // sub pointcloud from lslidar
     ros::Subscriber subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>(input_topic_name, 100, laserCloudHandler);
     ros::Subscriber subOdom = nh.subscribe<nav_msgs::Odometry>("/aft_mapped_to_init_high_frec", 100, odomHandler);
     
     ros::Publisher pubRegisteredPointCloud = nh.advertise<sensor_msgs::PointCloud2>("/ver_point_registered", 100);
+    ros::Publisher pubMap = nh.advertise<sensor_msgs::PointCloud2>("/ver_map", 100);
 
     ros::Rate rate(100);
     int counter=0;
@@ -87,9 +98,23 @@ int main(int argc, char **argv){
         double pointCloudTime = pointCloudBuf.front().header.stamp.toSec();
         // printf("odom/point time: %f, %f \n", odomTime, pointCloudTime);
 
+        // DEBUG:
+
+
+
         // sync time. Find pointCloud at odom time. (odom should between two pointCloud msgs.)
         nav_msgs::Odometry currOdom;
         sensor_msgs::PointCloud2 pcMsg;
+
+
+        // // DEBUG
+        pcMsg = pointCloudBuf.front();
+        // pcl::PointCloud<pcl::PointXYZ> pct;
+        // pcl::fromROSMsg(pcMsg, pct);
+
+        // continue;
+
+        mBuf.lock();
         bool isSynced = false;
         while (!odomBuf.empty() && !pointCloudBuf.empty() && !isSynced){
             double currOdomTime, firstPointTime, secondPointTime;
@@ -113,27 +138,46 @@ int main(int argc, char **argv){
                 }
             }
         }
-
+        mBuf.unlock();
         // printf("[Synced]. Odom / pointCloud: %f,  %f \n", currOdom.header.stamp.toSec(), pcMsg.header.stamp.toSec());
 
 
         // // reconstruct
-        Eigen::Matrix4d T = Eigen::Matrix4d::Zero();
+        Eigen::Matrix4d T_w_hor = Eigen::Matrix4d::Zero();
         auto q = currOdom.pose.pose.orientation;
         auto t = currOdom.pose.pose.position;
         Eigen::Quaterniond quart(q.w, q.x, q.y, q.z);
-        T.topLeftCorner(3,3) = quart.toRotationMatrix();
-        T.topRightCorner(4, 1) = Eigen::Vector4d(t.x, t.y, t.z, 1);
+        T_w_hor.topLeftCorner(3,3) = quart.toRotationMatrix();
+        T_w_hor.topRightCorner(4, 1) = Eigen::Vector4d(t.x, t.y, t.z, 1);
+
+        Eigen::Matrix4d T_w_ver = T_w_hor * T_hor_ver;
         // to pcl data
         pcl::PointCloud<pcl::PointXYZ> pc;
         pcl::fromROSMsg(pcMsg, pc);
-        // pcl::transformPointCloud(pc, pc, T.cast<float>());
+        // printf("size: odom/point: %d,  %d \n", odomBuf.size(), pointCloudBuf.size());
+        pcl::transformPointCloud(pc, pc, T_w_ver.cast<float>());
 
-        // sensor_msgs::PointCloud2 registeredPointCloud;
-        // pcl::toROSMsg(pc, registeredPointCloud);
-        // registeredPointCloud.header = pcMsg.header;
-        // ROS_INFO("Before pub...");
-        // pubRegisteredPointCloud.publish(registeredPointCloud);
+
+        // pub registered PointCloud
+        sensor_msgs::PointCloud2 registeredPointCloudMsg;
+        pcl::toROSMsg(pc, registeredPointCloudMsg);
+        registeredPointCloudMsg.header = pcMsg.header;
+        pubRegisteredPointCloud.publish(registeredPointCloudMsg);
+
+        // pub full map
+
+        *fullPointCloud += pc;
+        pcl::VoxelGrid<pcl::PointXYZ> downSizeFilter;
+        downSizeFilter.setLeafSize(0.2, 0.2, 0.2);
+        downSizeFilter.setInputCloud(fullPointCloud);
+        downSizeFilter.filter(*fullPointCloud);
+        
+
+        sensor_msgs::PointCloud2 fullPointCloudMsg;
+        pcl::toROSMsg(*fullPointCloud, fullPointCloudMsg);
+        fullPointCloudMsg.header = pcMsg.header;
+        pubMap.publish(fullPointCloudMsg);
+
     }
     
     return 0;
