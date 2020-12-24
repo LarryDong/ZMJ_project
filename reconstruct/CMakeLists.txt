@@ -47,7 +47,7 @@ add_executable(mapping_node src/mapping.cpp)
 target_link_libraries(mapping_node ${catkin_LIBRARIES})
 
 add_executable(my_test src/test.cpp)
-target_link_libraries(my_test)
+target_link_libraries(my_test ${catkin_LIBRARIES})
 
 add_executable(my_debug src/debug.cpp)
 target_link_libraries(my_debug ${catkin_LIBRARIES})

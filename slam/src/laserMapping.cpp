@@ -674,8 +674,9 @@ void process() {
 		gt_pub = t_pub.toc();
 		gt_whole = t_whole.toc();
 		// gt_prepareMap = 0, gt_dataAssociate = 0, gt_mapSolver = 0, gt_optimize = 0, gt_addPoint = 0, gt_ds = 0, gt_pub = 0, gt_whole = 0;
-		ROS_INFO_STREAM("Total: " << gt_whole << ", prepare: " << gt_prepareMap << ", DA: " << gt_dataAssociate << ", opti: " << gt_optimize);
-	}
+		// ROS_INFO_STREAM("Total: " << gt_whole << ", prepare: " << gt_prepareMap << ", DA: " << gt_dataAssociate << ", opti: " << gt_optimize);
+        std::cout << "[Map ] " << gt_whole << "ms, prepare: " << gt_prepareMap << ", DA: " << gt_dataAssociate << ", opti: " << gt_optimize << std::endl;
+    }
 
 }
 

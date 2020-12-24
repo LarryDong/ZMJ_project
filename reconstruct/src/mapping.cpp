@@ -9,6 +9,7 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/passthrough.h>
 #include <pcl/common/transforms.h>
 
 #include <ros/ros.h>
@@ -21,6 +22,7 @@
 #include <eigen3/Eigen/Dense>
 
 
+double g_min_range = 0.5, g_max_range = 10.0;
 
 std::queue<sensor_msgs::PointCloud2> pointCloudBuf;
 std::queue<nav_msgs::Odometry> odomBuf;
@@ -28,13 +30,38 @@ std::mutex mBuf;
 
 const int BuffSize = 100, SystemDelayCnt = 100;
 
+
+
+template <typename PointT>
+void removeCloseAndFarPoints(const pcl::PointCloud<PointT> &cloud_in, pcl::PointCloud<PointT> &cloud_out, float thres, float maxTh){
+    if (&cloud_in != &cloud_out){
+        cloud_out.header = cloud_in.header;
+        cloud_out.points.resize(cloud_in.points.size());
+    }
+    size_t j = 0;
+    for (size_t i = 0; i < cloud_in.points.size(); ++i){
+        double d = cloud_in.points[i].x * cloud_in.points[i].x + cloud_in.points[i].y * cloud_in.points[i].y + cloud_in.points[i].z * cloud_in.points[i].z;
+        if (d < thres * thres || d > maxTh * maxTh)
+            continue;
+        cloud_out.points[j] = cloud_in.points[i];
+        j++;
+    }
+    if (j != cloud_in.points.size())
+        cloud_out.points.resize(j);
+
+    cloud_out.height = 1;
+    cloud_out.width = static_cast<uint32_t>(j);
+    cloud_out.is_dense = true;
+}
+
+
 void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudPtr){
     mBuf.lock();
     if(pointCloudBuf.size()>BuffSize){
         pointCloudBuf.pop();
         // ROS_WARN("PointCloud buff pop().");
     }
-    sensor_msgs::PointCloud2 pc(*laserCloudPtr);            // TODO: correct or not???
+    sensor_msgs::PointCloud2 pc(*laserCloudPtr);
     pc.header.stamp = ros::Time().now();
     pointCloudBuf.push(pc);
     mBuf.unlock();
@@ -58,6 +85,10 @@ int main(int argc, char **argv){
     ros::NodeHandle nh;
     ROS_INFO("Vertical Mapping node begin...");
 
+    nh.param<double>("min_range", g_min_range, 0.5);
+    nh.param<double>("max_range", g_max_range, 10.0);
+    ROS_WARN_STREAM("range: [" << g_min_range << ", " << g_max_range << "].");
+
     Eigen::Matrix4d T_hor_ver = Eigen::Matrix4d::Identity();
     Eigen::Matrix3d R_hor_ver;
     R_hor_ver << 1, 0, 0, 0, 0, -1, 0, 1, 0;        // installed with axis aligned.
@@ -74,14 +105,16 @@ int main(int argc, char **argv){
     
     ros::Publisher pubRegisteredPointCloud = nh.advertise<sensor_msgs::PointCloud2>("/ver_point_registered", 100);
     ros::Publisher pubMap = nh.advertise<sensor_msgs::PointCloud2>("/ver_map", 100);
+    ros::Publisher pubCleanMap = nh.advertise<sensor_msgs::PointCloud2>("/ver_clean_map", 100);
     
     // -----------------------------------------------------------------------------------------------
 
     ros::Rate rate(100);
-    int counter=0;
     pcl::PointCloud<pcl::PointXYZ>::Ptr fullPointCloud(new pcl::PointCloud<pcl::PointXYZ>());
     size_t system_delay_counter = 0;
-    
+
+    int output_ctrl_counter = 0;
+
     while(ros::ok()){
         rate.sleep();
         ros::spinOnce();
@@ -141,6 +174,11 @@ int main(int argc, char **argv){
         // to pcl data
         pcl::PointCloud<pcl::PointXYZ> pc;
         pcl::fromROSMsg(pcMsg, pc);
+        
+        // clean the data.
+        std::vector<int> indices;
+        pcl::removeNaNFromPointCloud(pc, pc, indices);
+        removeCloseAndFarPoints(pc, pc, 0.1, 5);
         pcl::transformPointCloud(pc, pc, T_w_ver.cast<float>());
 
         // pub registered PointCloud (for debug)
@@ -159,6 +197,12 @@ int main(int argc, char **argv){
         pcl::toROSMsg(*fullPointCloud, fullPointCloudMsg);
         fullPointCloudMsg.header = pcMsg.header;
         pubMap.publish(fullPointCloudMsg);
+
+
+        if (output_ctrl_counter++ >= 10){
+            output_ctrl_counter = 0;
+            std::cout << "." << std::flush;
+        }
     }
     
     return 0;

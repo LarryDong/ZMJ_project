@@ -23,7 +23,7 @@ int g_skip_counter = 0;
 const bool PUB_EACH_LINE = false;   // pub each-line, for debug.
 
 // global parameters from launch.file
-double g_min_range = 1.0;
+double g_min_range = 1.0, g_max_range = 10.0;
 int g_scan_skip = 0;                // skip every `scan_skip scans.
 int g_used_scans = 32;               // scan numbers = total-scan-number / (scan_skip+1);
 int g_sector_num = 6;
@@ -53,14 +53,15 @@ std::vector<ros::Publisher> pubEachScan;
 ros::Time g_cloud_input_time = ros::Time();
 
 template <typename PointT>
-void removeClosedPointCloud(const pcl::PointCloud<PointT> &cloud_in, pcl::PointCloud<PointT> &cloud_out, float thres){
+void removeCloseAndFarPoints(const pcl::PointCloud<PointT> &cloud_in, pcl::PointCloud<PointT> &cloud_out, float thres, float maxTh){
     if (&cloud_in != &cloud_out){
         cloud_out.header = cloud_in.header;
         cloud_out.points.resize(cloud_in.points.size());
     }
     size_t j = 0;
     for (size_t i = 0; i < cloud_in.points.size(); ++i){
-        if (cloud_in.points[i].x * cloud_in.points[i].x + cloud_in.points[i].y * cloud_in.points[i].y + cloud_in.points[i].z * cloud_in.points[i].z < thres * thres)
+        double d = cloud_in.points[i].x * cloud_in.points[i].x + cloud_in.points[i].y * cloud_in.points[i].y + cloud_in.points[i].z * cloud_in.points[i].z;
+        if (d < thres * thres || d > maxTh * maxTh)
             continue;
         cloud_out.points[j] = cloud_in.points[i];
         j++;
@@ -101,7 +102,7 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
     std::vector<int> indices;
 
     pcl::removeNaNFromPointCloud(laserCloudIn, laserCloudIn, indices); // 去除无效点
-    removeClosedPointCloud(laserCloudIn, laserCloudIn, g_min_range); // // 去除一些距离激光雷达过近的点，通常这些点被认为是不可靠的
+    removeCloseAndFarPoints(laserCloudIn, laserCloudIn, g_min_range, g_max_range); // // 去除一些距离激光雷达过近的点，通常这些点被认为是不可靠的
 
     int cloudSize = laserCloudIn.points.size();
     // 激光雷达旋转的起始角度，用第一个点来计算
@@ -331,9 +332,12 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
         }
     }
 
-    ROS_INFO_STREAM("Time: " << t_whole.toc()
-                            << ", corner: " << cornerPointsSharp.size() << "/" << cornerPointsLessSharp.size()
-                            << ", planer: " << surfPointsFlat.size() << "/" << surfPointsLessFlat.size());
+    std::cout << "[Regi] " << t_whole.toc() << "ms, corner : " << cornerPointsSharp.size() << "/" << cornerPointsLessSharp.size()
+              << ", planer: " << surfPointsFlat.size() << "/" << surfPointsLessFlat.size() << std::endl;
+
+    // ROS_INFO_STREAM("<Registration> Time: " << t_whole.toc()
+    //                         << "ms, corner: " << cornerPointsSharp.size() << "/" << cornerPointsLessSharp.size()
+    //                         << ", planer: " << surfPointsFlat.size() << "/" << surfPointsLessFlat.size());
 
     if(t_whole.toc() > 50)
         ROS_WARN("scan registration process over 100 ms");
@@ -359,6 +363,7 @@ int main(int argc, char **argv){
     nh.param<int>("flat_num", g_flat_num, 2);
     nh.param<double>("flatless_ds", g_flatless_ds, 0.4);
     nh.param<double>("min_range", g_min_range, 0.8);
+    nh.param<double>("max_range", g_max_range, 10.0);
     
     ROS_WARN_STREAM("Scan Number: " << g_used_scans);
     ROS_WARN_STREAM("Sector Num: " << g_sector_num);
@@ -366,7 +371,7 @@ int main(int argc, char **argv){
     ROS_WARN_STREAM("less-sharp: " << g_sharpless_num);
     ROS_WARN_STREAM("flat: " << g_flat_num);
     ROS_WARN_STREAM("less-flat downsampling: " << g_flatless_ds);
-    ROS_WARN_STREAM("min_range: " << g_min_range);
+    ROS_WARN_STREAM("range: [" << g_min_range << ", " << g_max_range << "].");
 
     std::string input_topic_name;
     nh.param<std::string>("topic_name", input_topic_name, "lslidar_point_cloud");

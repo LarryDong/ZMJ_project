@@ -423,8 +423,10 @@ int main(int argc, char **argv){
         }
 
         gt_total = t_total.toc();
-        ROS_INFO_STREAM("Time: "<< gt_total << ". getData: " << gt_getData << ", associate: " << gt_associate
-                                << ", optimize(num): " << gt_solve << "(" << corner_correspondence << "/" << plane_correspondence << ")");
+        // ROS_INFO_STREAM("Time: "<< gt_total << ". getData: " << gt_getData << ", associate: " << gt_associate
+        //                         << ", optimize(num): " << gt_solve << "(" << corner_correspondence << "/" << plane_correspondence << ")");
+        std::cout << "[Odom] " << gt_total << ". getData: " << gt_getData << ", associate: " << gt_associate
+                  << ", opti(num): " << gt_solve << "(" << corner_correspondence << "/" << plane_correspondence << ")" << std::endl;
     }
 
     
