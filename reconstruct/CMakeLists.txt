@@ -18,6 +18,12 @@ find_package(catkin REQUIRED COMPONENTS
 # find_package(Boost REQUIRED COMPONENTS system)
 find_package(OpenCV REQUIRED)
 find_package(Ceres REQUIRED)
+find_package(PCL REQUIRED)
+
+# include_directories(${PCL_INCLUDE_DIRS})
+# link_directories(${PCL_LIBRARY_DIRS})
+# add_definitions(${PCL_DEFINITIONS})
+
 
 catkin_package(
 #  INCLUDE_DIRS include
@@ -47,7 +53,7 @@ add_executable(mapping_node src/mapping.cpp)
 target_link_libraries(mapping_node ${catkin_LIBRARIES})
 
 add_executable(my_test src/test.cpp)
-target_link_libraries(my_test ${catkin_LIBRARIES})
+target_link_libraries(my_test ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 add_executable(my_debug src/debug.cpp)
 target_link_libraries(my_debug ${catkin_LIBRARIES})

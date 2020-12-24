@@ -90,8 +90,11 @@ int main(int argc, char **argv){
     ROS_WARN_STREAM("range: [" << g_min_range << ", " << g_max_range << "].");
 
     Eigen::Matrix4d T_hor_ver = Eigen::Matrix4d::Identity();
-    Eigen::Matrix3d R_hor_ver;
+    Eigen::Matrix3d R_hor_ver, R_delta;
     R_hor_ver << 1, 0, 0, 0, 0, -1, 0, 1, 0;        // installed with axis aligned.
+    R_delta << 1, 0, 0, 0, 1, 0, 0, 0, 1;
+    // R_delta << 0.9996, -0.0207, 0.0187, 0.02054, 0.9997, 0.00928, -0.01891, -0.008897, 0.99978;
+    R_hor_ver = R_delta * R_hor_ver;
     Eigen::Vector3d t_hor_ver(0, -0.25, -0.18);     // ver_lidar position in hor_lidar coordinate.
     T_hor_ver.topLeftCorner(3, 3) = R_hor_ver;
     T_hor_ver.topRightCorner(3, 1) = t_hor_ver;
@@ -105,7 +108,7 @@ int main(int argc, char **argv){
     
     ros::Publisher pubRegisteredPointCloud = nh.advertise<sensor_msgs::PointCloud2>("/ver_point_registered", 100);
     ros::Publisher pubMap = nh.advertise<sensor_msgs::PointCloud2>("/ver_map", 100);
-    ros::Publisher pubCleanMap = nh.advertise<sensor_msgs::PointCloud2>("/ver_clean_map", 100);
+    // ros::Publisher pubCleanMap = nh.advertise<sensor_msgs::PointCloud2>("/ver_clean_map", 100);
     
     // -----------------------------------------------------------------------------------------------
 
@@ -178,7 +181,7 @@ int main(int argc, char **argv){
         // clean the data.
         std::vector<int> indices;
         pcl::removeNaNFromPointCloud(pc, pc, indices);
-        removeCloseAndFarPoints(pc, pc, 0.1, 5);
+        removeCloseAndFarPoints(pc, pc, g_min_range, g_max_range);
         pcl::transformPointCloud(pc, pc, T_w_ver.cast<float>());
 
         // pub registered PointCloud (for debug)

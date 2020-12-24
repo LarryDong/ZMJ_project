@@ -1,0 +1,5 @@
+
+This file is a reminder for myself.
+
+Publish topic in command lines
+rostopic pub /debug std_msgs/String "s" -1
