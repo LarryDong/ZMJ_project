@@ -1,7 +1,8 @@
 <launch>
 
     <param name="min_range" type="double" value="0.5" />
-    <param name="max_range" type="double" value="50.0" />
+    <param name="max_range" type="double" value="5.0" />
+    <param name="ds_size" type="double" value="0.1" />
     <param name="topic_name" type="string" value="verLidar/ver_lidar_points_cloud" />
     <node pkg="reconstruct" type="mapping_node" name="mapping_node" output="screen" />
 

@@ -186,29 +186,40 @@ void process() {
         std::chrono::milliseconds dura(2);
         std::this_thread::sleep_for(dura);
 
-        if (cornerLastBuf.empty() || surfLastBuf.empty() || fullResBuf.empty() ||odometryBuf.empty())
+        mBuf.lock();            // Bug fixed. Lock before.
+        if (cornerLastBuf.empty() || surfLastBuf.empty() || fullResBuf.empty() ||odometryBuf.empty()){
+            mBuf.unlock();
             continue;
-        
+        }
+        else
+            mBuf.unlock();
+
         mBuf.lock();
         while (!odometryBuf.empty() && odometryBuf.front()->header.stamp.toSec() < cornerLastBuf.front()->header.stamp.toSec())
             odometryBuf.pop();
         if (odometryBuf.empty()){
             mBuf.unlock();
-            break;
+            ROS_ERROR("Odom break;");
+            // break;
+            continue;           // Bug fixed. continue not break;
         }
 
         while (!surfLastBuf.empty() && surfLastBuf.front()->header.stamp.toSec() < cornerLastBuf.front()->header.stamp.toSec())
             surfLastBuf.pop();
         if (surfLastBuf.empty()){
             mBuf.unlock();
-            break;
+            ROS_ERROR("Surf break;");
+            // break;
+            continue;
         }
 
         while (!fullResBuf.empty() && fullResBuf.front()->header.stamp.toSec() < cornerLastBuf.front()->header.stamp.toSec())
             fullResBuf.pop();
         if (fullResBuf.empty()){
             mBuf.unlock();
-            break;
+            ROS_ERROR("Full break;");
+            // break;
+            continue;
         }
 
         timeLaserCloudCornerLast = cornerLastBuf.front()->header.stamp.toSec();
@@ -272,8 +283,8 @@ void process() {
         if (t_w_curr.z() + 25.0 < 0)
             centerCubeK--;
 
-// cube process
-{
+
+{       // cube process
         // 如果centerCube在整个子图的边缘（接近边缘3个cube），则将整个laserCloudCornerArray的内容平移
         while (centerCubeI < 3){
             for (int j = 0; j < laserCloudHeight; j++){
@@ -395,7 +406,7 @@ void process() {
             centerCubeK--;
             laserCloudCenDepth--;
         }
-}
+}       // end cube process
 
         int laserCloudValidNum = 0;
         int laserCloudSurroundNum = 0;

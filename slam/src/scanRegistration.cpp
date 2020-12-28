@@ -335,10 +335,6 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
     std::cout << "[Regi] " << t_whole.toc() << "ms, corner : " << cornerPointsSharp.size() << "/" << cornerPointsLessSharp.size()
               << ", planer: " << surfPointsFlat.size() << "/" << surfPointsLessFlat.size() << std::endl;
 
-    // ROS_INFO_STREAM("<Registration> Time: " << t_whole.toc()
-    //                         << "ms, corner: " << cornerPointsSharp.size() << "/" << cornerPointsLessSharp.size()
-    //                         << ", planer: " << surfPointsFlat.size() << "/" << surfPointsLessFlat.size());
-
     if(t_whole.toc() > 50)
         ROS_WARN("scan registration process over 100 ms");
 }

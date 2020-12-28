@@ -22,7 +22,7 @@
 #include <eigen3/Eigen/Dense>
 
 
-double g_min_range = 0.5, g_max_range = 10.0;
+double g_min_range = 0.5, g_max_range = 10.0, g_ds_size = 0.2;;
 
 std::queue<sensor_msgs::PointCloud2> pointCloudBuf;
 std::queue<nav_msgs::Odometry> odomBuf;
@@ -87,7 +87,10 @@ int main(int argc, char **argv){
 
     nh.param<double>("min_range", g_min_range, 0.5);
     nh.param<double>("max_range", g_max_range, 10.0);
+    nh.param<double>("ds_size", g_ds_size, 0.2);
+
     ROS_WARN_STREAM("range: [" << g_min_range << ", " << g_max_range << "].");
+    ROS_WARN_STREAM("down-sampling size: " << g_ds_size);
 
     Eigen::Matrix4d T_hor_ver = Eigen::Matrix4d::Identity();
     Eigen::Matrix3d R_hor_ver, R_delta;
@@ -193,7 +196,7 @@ int main(int argc, char **argv){
         // pub full map
         *fullPointCloud += pc;
         pcl::VoxelGrid<pcl::PointXYZ> downSizeFilter;
-        downSizeFilter.setLeafSize(0.2, 0.2, 0.2);
+        downSizeFilter.setLeafSize(g_ds_size, g_ds_size, g_ds_size);
         downSizeFilter.setInputCloud(fullPointCloud);
         downSizeFilter.filter(*fullPointCloud);
         sensor_msgs::PointCloud2 fullPointCloudMsg;
