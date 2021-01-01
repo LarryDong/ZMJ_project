@@ -123,9 +123,10 @@ int main(int argc, char **argv){
     ndt.align(*registered_pc, init_guess);
 
     std::cout << "Normal Distributions Transform has converged:" << ndt.hasConverged() << " score: " << ndt.getFitnessScore() << std::endl;
-    std::cout << "Transform: \n" << ndt.getFinalTransformation() << std::endl;
+    auto deltaT = ndt.getFinalTransformation();
+    std::cout << "Transform: \n" << deltaT << std::endl;
     std::ofstream file("delta_T.txt");
-    file << ndt.getFinalTransformation() << "\n";
+    file << deltaT << "\n";
     std::cout << "Saved to 'delta_T.txt'" << std::endl;
 
     // Transforming unfiltered, input cloud using found transform.
@@ -150,6 +151,8 @@ int main(int argc, char **argv){
     // Starting visualizer
     viewer_final->addCoordinateSystem(1.0, "global");
     viewer_final->initCameraParameters();
+
+    std::cout << "Color: red-gt, green-registered, blue-not aligned." << std::endl;
 
     while (!viewer_final->wasStopped()){
         viewer_final->spinOnce(100);

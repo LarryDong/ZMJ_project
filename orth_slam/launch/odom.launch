@@ -1,6 +1,0 @@
-<launch>
-    
-    <node pkg="orth_slam" type="orth_odometry_node" name="orth_odometry_node" output="screen" />
-    
-
-</launch>
