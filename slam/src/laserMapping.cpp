@@ -180,7 +180,7 @@ void laserOdometryHandler(const nav_msgs::Odometry::ConstPtr &laserOdometry){
 // 主线程
 void process() {
 
-	ROS_INFO("Mapping process begin...");
+	ROS_WARN("--> Mapping node begin...");
 	while(1){
 
         std::chrono::milliseconds dura(2);
@@ -200,7 +200,6 @@ void process() {
         if (odometryBuf.empty()){
             mBuf.unlock();
             ROS_ERROR("Odom break;");
-            // break;
             continue;           // Bug fixed. continue not break;
         }
 
@@ -209,7 +208,6 @@ void process() {
         if (surfLastBuf.empty()){
             mBuf.unlock();
             ROS_ERROR("Surf break;");
-            // break;
             continue;
         }
 
@@ -218,7 +216,6 @@ void process() {
         if (fullResBuf.empty()){
             mBuf.unlock();
             ROS_ERROR("Full break;");
-            // break;
             continue;
         }
 
@@ -230,7 +227,8 @@ void process() {
         if (timeLaserCloudCornerLast != timeLaserOdometry || timeLaserCloudSurfLast != timeLaserOdometry ||timeLaserCloudFullRes != timeLaserOdometry){
             printf("odom time: %f\n", timeLaserOdometry);
             printf("time corner %f surf %f full %f odom %f \n", timeLaserCloudCornerLast, timeLaserCloudSurfLast, timeLaserCloudFullRes, timeLaserOdometry);
-            ROS_ERROR("unsync messeage!!!");
+            printf("unsync messeage!!! --mapping\n");
+            ROS_ERROR("unsync messeage --mapping!!!");
             cornerLastBuf.pop();
             mBuf.unlock();
             // break;
@@ -688,7 +686,6 @@ void process() {
 		// ROS_INFO_STREAM("Total: " << gt_whole << ", prepare: " << gt_prepareMap << ", DA: " << gt_dataAssociate << ", opti: " << gt_optimize);
         std::cout << "[Map ] " << gt_whole << "ms, prepare: " << gt_prepareMap << ", DA: " << gt_dataAssociate << ", opti: " << gt_optimize << std::endl;
     }
-
 }
 
 int main(int argc, char **argv){

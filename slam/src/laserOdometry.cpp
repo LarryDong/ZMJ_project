@@ -30,6 +30,7 @@
 // constexpr double SCAN_PERIOD = 0.1;         // 激光雷达的频率，0.1s
 // int skipFrameNum = 5; // 通过launch文件进行设置，控制输出的频率
 
+// #define DEBUG_OUTPUT
 
 // global settings.
 constexpr double DISTANCE_SQ_THRESHOLD = 25; // 找最近点的距离平方的阈值
@@ -40,8 +41,12 @@ int g_SKIP_FRAME = 1;
 int corner_correspondence = 0, plane_correspondence = 0;
 int laserCloudCornerLastNum = 0, laserCloudSurfLastNum = 0;
 int g_skip_counter = 0;
+    // if (DISTORTION)
+    //     s = (pi->intensity - int(pi->intensity)) / SCAN_PERIOD; // 根据在这一帧中的时间（intensity的小数部分）进行位姿转换（去畸变）
+    // else
+    //     s = 1.0;
 
-bool systemInited = false;
+bool g_systemInited = false;
 double timeCornerPointsSharp = 0;
 double timeCornerPointsLessSharp = 0;
 double timeSurfPointsFlat = 0;
@@ -88,10 +93,6 @@ double gt_getData=0, gt_associate = 0, gt_solve = 0, gt_pub = 0, gt_total = 0;
 void TransformToStart(PointType const *const pi, PointType *const po){
     // //interpolation ratio
     double s = 1.0;
-    // if (DISTORTION)
-    //     s = (pi->intensity - int(pi->intensity)) / SCAN_PERIOD; // 根据在这一帧中的时间（intensity的小数部分）进行位姿转换（去畸变）
-    // else
-    //     s = 1.0;
 
     // 通过线性插值获得这一时刻激光雷达相对上一帧的位姿
     Eigen::Quaterniond q_point_last = Eigen::Quaterniond::Identity().slerp(s, q_last_curr);
@@ -106,21 +107,33 @@ void TransformToStart(PointType const *const pi, PointType *const po){
 }
 
 void laserCloudSharpHandler(const sensor_msgs::PointCloud2ConstPtr &cornerPointsSharp2){
+#ifdef DEBUG_OUTPUT
+    printf("[DEBUG] Sharp callback \n");
+#endif
     mBuf.lock();
     cornerSharpBuf.push(cornerPointsSharp2);
     mBuf.unlock();
 }
 void laserCloudLessSharpHandler(const sensor_msgs::PointCloud2ConstPtr &cornerPointsLessSharp2){
+#ifdef DEBUG_OUTPUT
+    printf("[DEBUG] lessSharp callback \n");
+#endif
     mBuf.lock();
     cornerLessSharpBuf.push(cornerPointsLessSharp2);
     mBuf.unlock();
 }
 void laserCloudFlatHandler(const sensor_msgs::PointCloud2ConstPtr &surfPointsFlat2){
+#ifdef DEBUG_OUTPUT
+    printf("[DEBUG] Flat callback \n");
+#endif
     mBuf.lock();
     surfFlatBuf.push(surfPointsFlat2);
     mBuf.unlock();
 }
 void laserCloudLessFlatHandler(const sensor_msgs::PointCloud2ConstPtr &surfPointsLessFlat2){
+#ifdef DEBUG_OUTPUT
+    printf("[DEBUG] lessFlat callback \n");
+#endif
     mBuf.lock();
     surfLessFlatBuf.push(surfPointsLessFlat2);
     mBuf.unlock();
@@ -136,6 +149,7 @@ int main(int argc, char **argv){
 
     ros::init(argc, argv, "laserOdometry");
     ros::NodeHandle nh;
+    ROS_WARN("--> Odometry node begin...");
 
     ros::Subscriber subLaserCloudFullRes = nh.subscribe<sensor_msgs::PointCloud2>("/lslidar_point_cloud_2", 100, laserCloudFullResHandler);
     ros::Subscriber subCornerPointsSharp = nh.subscribe<sensor_msgs::PointCloud2>("/laser_cloud_sharp", 100, laserCloudSharpHandler);
@@ -159,8 +173,16 @@ int main(int argc, char **argv){
         ros::spinOnce();
 
         // STEP 1. Check sync.
-        if (cornerSharpBuf.empty() || cornerLessSharpBuf.empty() || surfFlatBuf.empty() || surfLessFlatBuf.empty() || fullPointsBuf.empty())
+
+        // Warning: all time should be the same. From scanRegistration node. So first run `odom_node` then start the `registration
+        // TODO: lock / unlock
+        mBuf.lock();
+        if (cornerSharpBuf.empty() || cornerLessSharpBuf.empty() || surfFlatBuf.empty() || surfLessFlatBuf.empty() || fullPointsBuf.empty()){
+            mBuf.unlock();
             continue;
+        }
+        mBuf.unlock();
+
         timeCornerPointsSharp = cornerSharpBuf.front()->header.stamp.toSec();
         timeCornerPointsLessSharp = cornerLessSharpBuf.front()->header.stamp.toSec();
         timeSurfPointsFlat = surfFlatBuf.front()->header.stamp.toSec();
@@ -168,7 +190,11 @@ int main(int argc, char **argv){
         timeLaserCloudFullRes = fullPointsBuf.front()->header.stamp.toSec();
         if (timeCornerPointsSharp != timeLaserCloudFullRes || timeCornerPointsLessSharp != timeLaserCloudFullRes ||
             timeSurfPointsFlat != timeLaserCloudFullRes || timeSurfPointsLessFlat != timeLaserCloudFullRes) {
-            printf("unsync messeage!");
+            printf("time: sharp/less/flat/less/full: %f, %f, %f, %f, %f \n", timeCornerPointsSharp, timeCornerPointsLessSharp, timeSurfPointsFlat, timeSurfPointsLessFlat, timeLaserCloudFullRes);
+            printf("unsync messeage!!! --odom\n");              // use `printf` when redirect the output stream to a file.
+            while(1){
+                ROS_ERROR("unsync messeage!!! --odom\n");       // should not happen.
+            }
             ROS_BREAK();
         }
 
@@ -201,8 +227,8 @@ int main(int argc, char **argv){
 
         // STEP 3. Odom running.
         TicToc t_whole;
-        if (!systemInited){ // 第一帧信息存下来作为lastframe，这样之后的信息才可以和上一帧匹配得到位姿
-            systemInited = true;
+        if (!g_systemInited){ // 第一帧信息存下来作为lastframe，这样之后的信息才可以和上一帧匹配得到位姿
+            g_systemInited = true;
             std::cout << "Initialization finished \n";
         }
         else{

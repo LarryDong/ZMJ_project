@@ -17,6 +17,8 @@ using std::atan2;
 using std::cos;
 using std::sin;
 
+// #define DEBUG_OUTPUT
+
 // global settings.
 const int N_SCANS = 32;
 int g_skip_counter = 0;
@@ -293,7 +295,6 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
     // laserCloudOutMsg.header.stamp = laserCloudMsg->header.stamp;
     laserCloudOutMsg.header.stamp = g_cloud_input_time;
     laserCloudOutMsg.header.frame_id = "/laser_link";
-    
     pubLaserCloud.publish(laserCloudOutMsg);
 
     // pub 2: corners/less-sharp corners
@@ -333,10 +334,20 @@ void laserCloudHandler(const sensor_msgs::PointCloud2ConstPtr &laserCloudMsg){
     }
 
     std::cout << "[Regi] " << t_whole.toc() << "ms, corner : " << cornerPointsSharp.size() << "/" << cornerPointsLessSharp.size()
-              << ", planer: " << surfPointsFlat.size() << "/" << surfPointsLessFlat.size() << std::endl;
+        << ", planer: " << surfPointsFlat.size() << "/" << surfPointsLessFlat.size() << std::endl;
+
+#ifdef DEBUG_OUTPUT
+    // debug
+    double t0 = laserCloudOutMsg.header.stamp.toSec();
+    double t1 = cornerPointsSharpMsg.header.stamp.toSec();
+    double t2 = cornerPointsLessSharpMsg.header.stamp.toSec();
+    double t3 = surfPointsFlat2.header.stamp.toSec();
+    double t4  =surfPointsLessFlat2.header.stamp.toSec();
+    printf("<Odom pub time>: %f, %f, %f, %f, %f \n", t0, t1, t2, t3, t4);
+#endif 
 
     if(t_whole.toc() > 50)
-        ROS_WARN("scan registration process over 100 ms");
+        ROS_WARN("scan registration process over 50 ms");
 }
 
 
@@ -344,7 +355,7 @@ int main(int argc, char **argv){
 
     ros::init(argc, argv, "scanRegistration");
     ros::NodeHandle nh;
-    ROS_INFO("Scan registration node begin...");
+    ROS_WARN("--> Registration node begin...");
 
     // load settings.
     nh.param<int>("scan_skip", g_scan_skip, 0); // 激光雷达的线束
@@ -360,18 +371,18 @@ int main(int argc, char **argv){
     nh.param<double>("flatless_ds", g_flatless_ds, 0.4);
     nh.param<double>("min_range", g_min_range, 0.8);
     nh.param<double>("max_range", g_max_range, 10.0);
-    
-    ROS_WARN_STREAM("Scan Number: " << g_used_scans);
-    ROS_WARN_STREAM("Sector Num: " << g_sector_num);
-    ROS_WARN_STREAM("sharp: " << g_sharp_num);
-    ROS_WARN_STREAM("less-sharp: " << g_sharpless_num);
-    ROS_WARN_STREAM("flat: " << g_flat_num);
-    ROS_WARN_STREAM("less-flat downsampling: " << g_flatless_ds);
-    ROS_WARN_STREAM("range: [" << g_min_range << ", " << g_max_range << "].");
-
     std::string input_topic_name;
     nh.param<std::string>("topic_name", input_topic_name, "lslidar_point_cloud");
-    std::cout<<"--------"<<input_topic_name<<" --------"<<std::endl;
+
+    ROS_INFO_STREAM("Scan Number: " << g_used_scans);
+    ROS_INFO_STREAM("Sector Num: " << g_sector_num);
+    ROS_INFO_STREAM("sharp: " << g_sharp_num);
+    ROS_INFO_STREAM("less-sharp: " << g_sharpless_num);
+    ROS_INFO_STREAM("flat: " << g_flat_num);
+    ROS_INFO_STREAM("less-flat downsampling: " << g_flatless_ds);
+    ROS_INFO_STREAM("range: [" << g_min_range << ", " << g_max_range << "].");
+    ROS_INFO_STREAM("input-topic: " << input_topic_name);
+
     // sub pointcloud from lslidar
     ros::Subscriber subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>(input_topic_name, 100, laserCloudHandler);
 

@@ -15,11 +15,13 @@
     <param name="topic_name" type="string" value="horLidar/hor_lidar_points_cloud" />
     <!-- <param name="topic_name" type="string" value="/lslidar_point_cloud" /> -->
     
-    <!-- Registration Node -->
-    <node pkg="slam" type="scanRegistration_node" name="scanRegistration_node" output="screen" />
 
     <!-- Odom Node -->
+    <!-- Launch odom node first to wait for data from registration node -->
     <node pkg="slam" type="laserOdometry_node" name="laserOdometry_node" output="screen" />
+
+    <!-- Registration Node -->
+    <node pkg="slam" type="scanRegistration_node" name="scanRegistration_node" output="screen" />
 
     <!-- Mapping node -->
     <node pkg="slam" type="laserMapping_node" name="laserMapping_node" output="screen" />
