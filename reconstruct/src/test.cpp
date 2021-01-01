@@ -124,6 +124,9 @@ int main(int argc, char **argv){
 
     std::cout << "Normal Distributions Transform has converged:" << ndt.hasConverged() << " score: " << ndt.getFitnessScore() << std::endl;
     std::cout << "Transform: \n" << ndt.getFinalTransformation() << std::endl;
+    std::ofstream file("delta_T.txt");
+    file << ndt.getFinalTransformation() << "\n";
+    std::cout << "Saved to 'delta_T.txt'" << std::endl;
 
     // Transforming unfiltered, input cloud using found transform.
     pcl::transformPointCloud(*cloud_in, *registered_pc, ndt.getFinalTransformation());
