@@ -1,0 +1,28 @@
+<launch>
+
+    <param name="scan_skip" type="int" value="0" />
+    <param name="sector_num" type="int" value="8" />
+    <param name="sharp_num" type="int" value="2" />
+    <param name="sharpless_num" type="int" value="10" />
+    <param name="flat_num" type="int" value="2" />
+    <param name="flatless_ds" type="double" value="0.2" />
+    <param name="skip_frame" type="int" value="1" />
+    <param name="min_range" type="double" value="0.5" />
+    <param name="max_range" type="double" value="200.0" />
+
+    <!-- Change the topic name if use and recorded .bag -->
+    <param name="topic_name" type="string" value="verLidar/ver_lidar_points_cloud" />
+    <!-- <param name="topic_name" type="string" value="/lslidar_point_cloud" /> -->
+    
+
+    <!-- Odom Node -->
+    <!-- Launch odom node first to wait for data from registration node -->
+    <node pkg="vslam" type="vlaserOdometry_node" name="vlaserOdometry_node" output="screen" />
+
+    <!-- Registration Node -->
+    <node pkg="vslam" type="vscanRegistration_node" name="vscanRegistration_node" output="screen" />
+
+    <!-- Mapping node -->
+    <node pkg="vslam" type="vlaserMapping_node" name="vlaserMapping_node" output="screen" />
+
+</launch>
