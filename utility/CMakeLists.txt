@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(reconstruct)
+project(utility)
 set(CMAKE_BUILD_TYPE "Release")
 
 
@@ -48,12 +48,11 @@ include_directories(
     ${CERES_INCLUDE_DIRS}
 )
 
+add_executable(record_node src/record_node.cpp)
+target_link_libraries(record_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
-add_executable(mapping_node src/mapping.cpp)
-target_link_libraries(mapping_node ${catkin_LIBRARIES})
+add_executable(calib_node src/calib_extrinscis.cpp)
+target_link_libraries(calib_node ${catkin_LIBRARIES}  ${PCL_LIBRARIES})
 
-# add_executable(my_test src/test.cpp)
-# target_link_libraries(my_test ${catkin_LIBRARIES} ${PCL_LIBRARIES})
-
-# add_executable(my_debug src/debug.cpp)
-# target_link_libraries(my_debug ${catkin_LIBRARIES})
+add_executable(filter_node src/passthrough_filter.cpp)
+target_link_libraries(filter_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})

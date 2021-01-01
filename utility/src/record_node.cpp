@@ -1,3 +1,7 @@
+// record all necessary data.
+// record horizontal pointcloud and vertical pointcloud when receiving "s"
+// pub command (in terminal): rostopic pub /debug std_msgs/String "s" -1
+//                          -- create by dongy. Modified: 20210101
 
 #include <iostream>
 
@@ -35,7 +39,6 @@ void horPointCloudHandler(const sensor_msgs::PointCloud2ConstPtr &pc){
     mMap.lock();
     pcl::fromROSMsg(*pc, g_horPointCloud); // 将传入的ros消息格式转为pcl库里的点云格式
     mMap.unlock();
-    ROS_WARN_STREAM("Szie: "<<(*pc).data.size());
 }
 
 void verPointCloudHandler(const sensor_msgs::PointCloud2ConstPtr &pc){
@@ -49,6 +52,7 @@ int main(int argc, char **argv){
     ros::init(argc, argv, "my_debug");
     ros::NodeHandle nh;
     ROS_INFO("Debug node begin......");
+    std::cout << "type: 'rostopic pub /debug std_msgs/String \"s\" -1' in terminal to save pointcloud." << std::endl;
 
     ros::Subscriber subString = nh.subscribe<std_msgs::String>("/debug", 1, handler);
     ros::Subscriber subHorMap = nh.subscribe<sensor_msgs::PointCloud2>("/laser_cloud_map", 100, horPointCloudHandler);

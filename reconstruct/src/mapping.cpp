@@ -1,5 +1,6 @@
 
 // #include <cmath>
+#include <iostream>
 #include <vector>
 #include <queue>
 #include <mutex>
@@ -89,19 +90,56 @@ int main(int argc, char **argv){
     nh.param<double>("max_range", g_max_range, 10.0);
     nh.param<double>("ds_size", g_ds_size, 0.2);
 
-    ROS_WARN_STREAM("range: [" << g_min_range << ", " << g_max_range << "].");
-    ROS_WARN_STREAM("down-sampling size: " << g_ds_size);
+    ROS_INFO_STREAM("range: [" << g_min_range << ", " << g_max_range << "].");
+    ROS_INFO_STREAM("down-sampling size: " << g_ds_size);
 
+    // STEP 2. Load guess&delta values;
+    Eigen::Matrix3d R_hor_ver, R_delta, R_guess;
+    Eigen::Vector3d t_hor_ver, t_delta, t_guess;
+
+    double r11, r12, r13, r21, r22, r23, r31, r32, r33, t1, t2, t3;
     Eigen::Matrix4d T_hor_ver = Eigen::Matrix4d::Identity();
-    Eigen::Matrix3d R_hor_ver, R_delta;
-    R_hor_ver << 1, 0, 0, 0, 0, -1, 0, 1, 0;        // installed with axis aligned.
-    R_delta << 1, 0, 0, 0, 1, 0, 0, 0, 1;
-    // R_delta << 0.9996, -0.0207, 0.0187, 0.02054, 0.9997, 0.00928, -0.01891, -0.008897, 0.99978;
-    R_hor_ver = R_delta * R_hor_ver;
-    Eigen::Vector3d t_hor_ver(0, -0.25, -0.18);     // ver_lidar position in hor_lidar coordinate.
+    std::ifstream fguess("/home/larrydong/guess_T.txt");
+    std::ifstream fdelta("/home/larrydong/delta_T.txt");
+    if(!fguess.is_open()){
+        ROS_ERROR("No guess value. Error!");
+    }
+    else{
+        fguess >> r11 >> r12 >> r13 >> t1 >> r21 >> r22 >> r23 >> t2 >> r31 >> r32 >> r33 >> t3;
+        // std::cout << r11 << r12 << r13 << std::endl;
+        R_guess << r11, r12, r13, r21, r22, r23, r31, r32, r33;
+        t_guess << t1, t2, t3;
+    }
+    fguess.close();
+
+    if(!fdelta.is_open()){
+        ROS_WARN("No delta value. Use identity");
+        R_delta = Eigen::Matrix3d::Identity();
+        t_delta = Eigen::Vector3d::Zero();
+    }
+    else{
+        ROS_WARN("Use delta value to calcualte extrinsics.");
+        fdelta >> r11 >> r12 >> r13 >> t1 >> r21 >> r22 >> r23 >> t2 >> r31 >> r32 >> r33 >> t3;
+        R_delta << r11, r12, r13, r21, r22, r23, r31, r32, r33;
+        t_delta << t1, t2, t3;
+    }
+    fdelta.close();
+
+    R_hor_ver = R_delta * R_guess;
+    t_hor_ver = R_delta * t_guess + t_delta;
+
     T_hor_ver.topLeftCorner(3, 3) = R_hor_ver;
     T_hor_ver.topRightCorner(3, 1) = t_hor_ver;
-    ROS_INFO_STREAM("T_hor_ver: \n" << T_hor_ver);
+    // ROS_INFO_STREAM("T_hor_ver: \n" << T_hor_ver);
+
+    std::ofstream fsave("guess_T.txt", std::ios::out | std::ios::binary);
+    if(fsave.fail()){
+        ROS_ERROR("Cannot save new guess.");
+    }
+    else{
+        fsave << T_hor_ver;
+        std::cout << "Saved new extrinsics: \n" << T_hor_ver << std::endl;
+    }
 
     std::string input_topic_name;
     nh.param<std::string>("topic_name", input_topic_name, "lslidar_point_cloud");
