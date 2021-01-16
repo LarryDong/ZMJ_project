@@ -56,3 +56,11 @@ target_link_libraries(calib_node ${catkin_LIBRARIES}  ${PCL_LIBRARIES})
 
 add_executable(filter_node src/passthrough_filter.cpp)
 target_link_libraries(filter_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
+# isolate one support 
+add_executable(isolate_node src/isolate_support.cpp)
+target_link_libraries(isolate_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
+# show a pointcloud.pcd 
+add_executable(show_node src/show_pointcloud.cpp)
+target_link_libraries(show_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
