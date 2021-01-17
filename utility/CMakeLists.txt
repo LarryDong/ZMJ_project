@@ -64,3 +64,7 @@ target_link_libraries(isolate_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 # show a pointcloud.pcd 
 add_executable(show_node src/show_pointcloud.cpp)
 target_link_libraries(show_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
+# calculate center and axis
+add_executable(nomalize_node src/normalize_pointcloud.cpp)
+target_link_libraries(nomalize_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
