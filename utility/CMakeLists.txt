@@ -68,3 +68,11 @@ target_link_libraries(show_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 # calculate center and axis
 add_executable(nomalize_node src/normalize_pointcloud.cpp)
 target_link_libraries(nomalize_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
+# statistical filter
+add_executable(statistical_node src/statistical_filter.cpp)
+target_link_libraries(statistical_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
+# recognize by correspondence_grouping
+add_executable (correspondence_grouping src/correspondence_grouping.cpp)
+target_link_libraries (correspondence_grouping ${catkin_LIBRARIES} ${PCL_LIBRARIES})
