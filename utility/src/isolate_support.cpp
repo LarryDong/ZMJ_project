@@ -1,8 +1,9 @@
 // isiolate one support.
-//              -- created by dongy. Modified: 20210116
+//              -- created by dongy. Modified: 20210120
 
 
 #include <iostream>
+#include <string>
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
@@ -109,8 +110,11 @@ int main(int argc, char **argv){
     cout << "Isolate one support." << endl;
     pcl::PointCloud<PointT>::Ptr cloud_in(new pcl::PointCloud<PointT>());
 
-    if(pcl::io::loadPCDFile<PointT>("ver.pcd", *cloud_in) == -1){
-        cout << "Cannot open 'ver.pcd'. " << endl;
+    string fin = "ver.pcd";
+    fin = (argc >= 2) ? argv[1] : fin;
+
+    if(pcl::io::loadPCDFile<PointT>(fin, *cloud_in) == -1){
+        cout << "Cannot open " << fin << endl;
     }
     
     // Initializing point cloud visualizer

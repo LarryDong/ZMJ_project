@@ -20,7 +20,11 @@ int main(int argc, char **argv){
 
     string fin= "isolated_support.pcd", fout="normalized_support.pcd";
     fin = (argc >= 2) ? argv[1] : fin;
-    fout = (argc == 3) ? argv[2] : fout;
+    fout = (argc >= 3) ? argv[2] : fout;
+
+    string type = "zxy";
+    type = (argc == 4) ? argv[3] : type;
+    cout << "Axis type: " << type << endl;
 
     if(pcl::io::loadPCDFile<MyPoint>(fin, *cloud_in) == -1){
         cout << "Cannot open '" << fin << "'. " << endl;
@@ -32,9 +36,24 @@ int main(int argc, char **argv){
     moment.compute();
 
     Eigen::Vector3f center, vx, vy, vz;
-    moment.getEigenVectors(vz, vx, vy);     // z-x-y
-    // float e1, e2, e3;
-    // moment.getEigenValues(e1, e2, e3);
+
+    // principle axis are different.
+    if (type == "xyz")
+        moment.getEigenVectors(vx, vy, vz);
+    else if (type == "xzy")
+        moment.getEigenVectors(vx, vz, vy);
+    else if (type == "yxz")
+        moment.getEigenVectors(vy, vx, vz);
+    else if (type == "yzx")
+        moment.getEigenVectors(vy, vz, vx);
+    else if (type == "zxy")
+        moment.getEigenVectors(vz, vx, vy);
+    else if (type == "zyy")
+        moment.getEigenVectors(vz, vy, vx); // z-x-y
+    else {        
+        cout << "Input type error!" << endl;
+        return -1;
+    }
 
     moment.getMassCenter(center);
     cout << "Center: (" << center[0] << ", " << center[1] << ", " << center[2] << ")." << endl;
