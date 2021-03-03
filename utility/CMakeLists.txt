@@ -54,8 +54,11 @@ target_link_libraries(record_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 add_executable(show_node src/show_pointcloud.cpp)
 target_link_libraries(show_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
-add_executable (my_test src/my_test.cpp)
-target_link_libraries (my_test ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+add_executable (process 
+    src/process/main.cpp
+    
+)
+target_link_libraries (process ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 # add_executable (process src/process.cpp)
 # target_link_libraries (process ${catkin_LIBRARIES} ${PCL_LIBRARIES})
