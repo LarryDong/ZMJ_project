@@ -40,7 +40,6 @@ catkin_package(
 ## Your package locations should be listed before other locations
 include_directories(
     include
-    /usr/local/include/opencv4
     # /opt/ros/melodic/include
     # /usr/include/pcl-1.8
     /usr/include/eigen3
@@ -51,16 +50,16 @@ include_directories(
 add_executable(record_node src/record_node.cpp)
 target_link_libraries(record_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
-add_executable(calib_node src/calib_extrinscis.cpp)
-target_link_libraries(calib_node ${catkin_LIBRARIES}  ${PCL_LIBRARIES})
-
-add_executable(filter_node src/passthrough_filter.cpp)
-target_link_libraries(filter_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
-
-# isolate one support 
-add_executable(isolate_node src/isolate_support.cpp)
-target_link_libraries(isolate_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
-
 # show a pointcloud.pcd 
 add_executable(show_node src/show_pointcloud.cpp)
 target_link_libraries(show_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
+add_executable (process 
+    src/process/main.cpp
+    src/process/car_path.cpp
+    src/process/scene_cloud.cpp
+)
+target_link_libraries (process ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
+# add_executable (process src/process.cpp)
+# target_link_libraries (process ${catkin_LIBRARIES} ${PCL_LIBRARIES})

@@ -16,7 +16,7 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <nav_msgs/Odometry.h>
-// #include <nav_msgs/Path.h>
+#include <nav_msgs/Path.h>
 // #include <geometry_msgs/PoseStamped.h>
 
 #include <eigen3/Eigen/Core>
@@ -27,6 +27,7 @@ double g_min_range = 0.5, g_max_range = 10.0, g_ds_size = 0.2;;
 
 std::queue<sensor_msgs::PointCloud2> pointCloudBuf;
 std::queue<nav_msgs::Odometry> odomBuf;
+nav_msgs::Path gPath;
 std::mutex mBuf;
 
 const int BuffSize = 100, SystemDelayCnt = 100;
@@ -79,6 +80,15 @@ void odomHandler(const nav_msgs::OdometryConstPtr &odomPtr){
     mBuf.unlock();
     // ROS_INFO_STREAM("Odom size: " << odomBuf.size());
 }
+
+void pathHandler(const nav_msgs::PathConstPtr &pathPtr){
+    mBuf.lock();
+    gPath = *pathPtr;
+    mBuf.unlock();
+    // ROS_INFO_STREAM("Odom size: " << odomBuf.size());
+}
+
+
 
 int main(int argc, char **argv){
 
@@ -146,9 +156,11 @@ int main(int argc, char **argv){
     // sub pointcloud from lslidar
     ros::Subscriber subLaserCloud = nh.subscribe<sensor_msgs::PointCloud2>(input_topic_name, 100, laserCloudHandler);
     ros::Subscriber subOdom = nh.subscribe<nav_msgs::Odometry>("/aft_mapped_to_init_high_frec", 100, odomHandler);
+    ros::Subscriber subPath = nh.subscribe<nav_msgs::Path>("/aft_mapped_path", 100, pathHandler);
     
     ros::Publisher pubRegisteredPointCloud = nh.advertise<sensor_msgs::PointCloud2>("/ver_point_registered", 100);
     ros::Publisher pubMap = nh.advertise<sensor_msgs::PointCloud2>("/ver_map", 100);
+    ros::Publisher pubPath = nh.advertise<nav_msgs::Path>("/car_path", 100);
     // ros::Publisher pubCleanMap = nh.advertise<sensor_msgs::PointCloud2>("/ver_clean_map", 100);
     
     // -----------------------------------------------------------------------------------------------
@@ -242,6 +254,8 @@ int main(int argc, char **argv){
         fullPointCloudMsg.header = pcMsg.header;
         pubMap.publish(fullPointCloudMsg);
 
+        // pub full path
+        pubPath.publish(gPath);
 
         if (output_ctrl_counter++ >= 10){
             output_ctrl_counter = 0;
