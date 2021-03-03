@@ -50,32 +50,12 @@ include_directories(
 add_executable(record_node src/record_node.cpp)
 target_link_libraries(record_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
-add_executable(calib_node src/calib_extrinscis.cpp)
-target_link_libraries(calib_node ${catkin_LIBRARIES}  ${PCL_LIBRARIES})
-
-add_executable(filter_node src/passthrough_filter.cpp)
-target_link_libraries(filter_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
-
-# isolate one support 
-add_executable(isolate_node src/isolate_support.cpp)
-target_link_libraries(isolate_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
-
 # show a pointcloud.pcd 
 add_executable(show_node src/show_pointcloud.cpp)
 target_link_libraries(show_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
-# calculate center and axis
-add_executable(normalize_node src/normalize_pointcloud.cpp)
-target_link_libraries(normalize_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+add_executable (my_test src/my_test.cpp)
+target_link_libraries (my_test ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
-# statistical filter
-add_executable(statistical_node src/statistical_filter.cpp)
-target_link_libraries(statistical_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
-
-# recognize by correspondence_grouping
-add_executable (correspondence_grouping src/correspondence_grouping.cpp)
-target_link_libraries (correspondence_grouping ${catkin_LIBRARIES} ${PCL_LIBRARIES})
-
-# project points to the ground
-add_executable (ground_projection src/ground_projection.cpp)
-target_link_libraries (ground_projection ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+# add_executable (process src/process.cpp)
+# target_link_libraries (process ${catkin_LIBRARIES} ${PCL_LIBRARIES})
