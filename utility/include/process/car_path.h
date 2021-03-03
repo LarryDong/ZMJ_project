@@ -27,37 +27,17 @@ class CarPath{
 
 public:
     CarPath() { cout << "[Error]. Not allowed empty input."; }
-
-    CarPath(ros::NodeHandle &nh, string filename) : 
-        nh_(nh),
-        pc_(new pcl::PointCloud<pcl::PointXYZ>())
-    {
-        ifstream in(filename);
-        if (!in.is_open()){
-            cout << "[Error]. Cannot load nav_msgs" << endl;
-            return ;
-        }
-        while (!in.eof()){
-            double tmp; // orientation information is useless;
-            pcl::PointXYZ p;
-            in >> p.x >> p.y >> p.z >> tmp >> tmp >> tmp >> tmp;
-            pc_->push_back(p);
-        }
-        pubCloud_ = nh_.advertise<sensor_msgs::PointCloud2>("/car_path_cloud", 5);
-    }
-
-    void pub(void){     // pub pointcloud
-        sensor_msgs::PointCloud2 car_msg;
-        pcl::toROSMsg(*pc_, car_msg);
-        car_msg.header.frame_id = "/laser_link";
-        pubCloud_.publish(car_msg);
-    }
+    CarPath(ros::NodeHandle &nh, string filename);
+    void pub(void);
+    void pubOld(void);
+    double getClosestPointInPath(const pcl::PointXYZ& in, pcl::PointXYZ& out);
 
 public:
-    pcl::PointCloud<pcl::PointXYZ>::Ptr pc_;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr pc_, pc_ori_;
 
-private:
-    ros::Publisher pubCloud_;
+// private:
+    void smooth(void);
+    ros::Publisher pubCloud_, pubCloud_ori_;
     ros::NodeHandle nh_;
 };
 

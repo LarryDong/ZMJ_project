@@ -56,7 +56,8 @@ target_link_libraries(show_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 add_executable (process 
     src/process/main.cpp
-    
+    src/process/car_path.cpp
+    src/process/scene_cloud.cpp
 )
 target_link_libraries (process ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
