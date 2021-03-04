@@ -4,10 +4,14 @@
 
 #include <pcl/filters/passthrough.h>
 
-
-
-bool comp(const pcl::PointXYZ &p1, const pcl::PointXYZ &p2){
+bool comp_smaller(const pcl::PointXYZ &p1, const pcl::PointXYZ &p2){
     return p1.y < p2.y;
+}
+bool comp_bigger(const pcl::PointXYZ &p1, const pcl::PointXYZ &p2){
+    return p1.y > p2.y;
+}
+bool comp(const pcl::PointXYZ &p1, const pcl::PointXYZ &p2){
+    return fabs(p1.y) < fabs(p2.y);
 }
 
 CarPath::CarPath(ros::NodeHandle &nh, string filename) : 
@@ -37,6 +41,10 @@ CarPath::CarPath(ros::NodeHandle &nh, string filename) :
 
     *pc_ori_ = *pc_;
     pubCloud_ori_= nh_.advertise<sensor_msgs::PointCloud2>("/car_path_cloud_old", 5);
+
+
+    moving_direction_ = -1;     // TODO: load settings.
+    preProcess();
 }
 
 
@@ -59,7 +67,7 @@ void CarPath::pubOld(void) {
 
 
 // smooth the path;
-void CarPath::smooth(void){
+void CarPath::preProcess(void){
     vector<pcl::PointXYZ> points, pts2;
     points.resize(pc_->size());
     for(int i=0; i<pc_->size(); ++i){
@@ -67,7 +75,7 @@ void CarPath::smooth(void){
     }
 
     // 1. delete dense_points region
-    sort(points.begin(), points.end(), comp);
+    sort(points.begin(), points.end(), comp);       // no matter to y-/y+, always abs smaller.
     assert(points.size() != 0);
     // pc_->resize(0);     // clean the points.
     pcl::PointXYZ p_old = points[0];

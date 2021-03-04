@@ -27,22 +27,19 @@ void SceneCloud::pub(void){     // pub pointcloud
 
 
 void SceneCloud::preProcess(void){
-    ROS_INFO("Preprocess. Filter by: ds/passthrough/statistical");
-    // ds
+    ROS_INFO("Preprocess. TODO.");
+}
+
+void SceneCloud::filter(void){    
+    // 
+    ROS_INFO("Filtering SceneCloud. downsampling, passthrough, statistical");
+
     pcl::VoxelGrid<pcl::PointXYZ> downSizeFilter;
     double sz = 0.03;
     downSizeFilter.setLeafSize(sz, sz, sz);
     downSizeFilter.setInputCloud(pc_);
     downSizeFilter.filter(*pc_);
     
-    // passthrough filter   
-    // TODO: Not good. Moving direction may not aliged to 'y'. Use CarPath to determine x
-    pcl::PassThrough<pcl::PointXYZ> pass;
-    pass.setInputCloud(pc_);
-    pass.setFilterFieldName("x");
-    pass.setFilterLimits(-0.5, 5.0);
-    pass.filter(*pc_);
-
     // statistical outiers filter
     int K = 50;
     double std = 1;
@@ -51,8 +48,14 @@ void SceneCloud::preProcess(void){
     sor.setMeanK(K);
     sor.setStddevMulThresh(std);
     sor.filter(*pc_);
+    
+    // passthrough filter
+    pcl::PassThrough<pcl::PointXYZ> pass;
+    pass.setInputCloud(pc_);
+    pass.setFilterFieldName("x");
+    pass.setFilterLimits(-0.5, 5.0);        // Filter by parameters;
+    pass.filter(*pc_);
 }
-
 
 void SceneCloud::detectPlanes(void){
 
