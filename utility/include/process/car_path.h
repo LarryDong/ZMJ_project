@@ -31,14 +31,17 @@ public:
     void pub(void);
     void pubOld(void);
     double getClosestPointInPath(const pcl::PointXYZ& in, pcl::PointXYZ& out);
+    inline pcl::PointXYZ getBeginPoint(void) const { assert(!pc_->empty()); return (*pc_)[0];}
+    inline pcl::PointXYZ getEndPoint(void) const { assert(!pc_->empty()); return (*pc_)[pc_->size()-1];}
 
 public:
     pcl::PointCloud<pcl::PointXYZ>::Ptr pc_, pc_ori_;
 
-// private:
-    void smooth(void);
+private:
+    void preProcess(void);
     ros::Publisher pubCloud_, pubCloud_ori_;
     ros::NodeHandle nh_;
+    int moving_direction_;      // 1: y+; -1: y-
 };
 
 #endif
