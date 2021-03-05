@@ -1,6 +1,6 @@
 <launch>
     <node name="process" pkg="utility" type="process" output="screen"
-    args="--flagfile=$(find utility)/configure/settings.cfg" />
+    args="--flagfile=$(find utility)/configure/settings_large.cfg" />
 
     <arg name="rviz" default="true" />
     <group if="$(arg rviz)">

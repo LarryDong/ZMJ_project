@@ -12,7 +12,7 @@ Eigen::Matrix4d calcGlobalT(const CarPath& cp){
     Eigen::Vector3d dir = pe - pb;
     dir.normalize();
 
-    cout << "car from: (" << pb(0) << ", " << pb(1) << ", " << pb(2)
+    cout << "--> car from: (" << pb(0) << ", " << pb(1) << ", " << pb(2)
         << "), to: (" << pe(0) << ", " << pe(1) << ", " << pe(2) << ")" << endl;
 
     Eigen::Vector3d xn, yn, zn;

@@ -28,57 +28,48 @@
 #include <pcl/filters/passthrough.h>
 #include <pcl/kdtree/kdtree.h>
 
+#include "process/defination.h"
+#include "car_path.h"
 
 
 using namespace std;
 
 
-class RandColor{
-public:
-    RandColor(){
-        r = rand() % 255;
-        g = rand() % 255;
-        b = rand() % 255;
-    }
-    double r,g,b;
-};
-
-
-class ClusterParameter{
-public:
-    ClusterParameter(double angle, double dist, int mi, int ma) 
-        : delta_angle(angle), delta_distance(dist), min_num(mi), max_num(ma) {}
-
-    double delta_angle, delta_distance;
-    int min_num, max_num;
-};
-
 
 class SceneCloud{
-
 public:
     SceneCloud() { cout << "[Error]. Not allowed empty input."; }
     SceneCloud(ros::NodeHandle &nh, string filename);
     void pub();
-
-    void detectPlanes(void);
     void filter(double ds, double xmin, double xmax);
+    int mergeAllPlanes(const ClusterParameter& cp, const PlaneParameter& pp);
+    int extractAllRoofs(const ClusterParameter& cp, const PlaneParameter& pp);
+    int selectRoofs(const CarPath& cp, const SupportParameter& sp);
+
+
+    MyPointCloud getMergedPlanes(void) const { return merged_all_planes_; }
+    MyPointCloud getMergedRoofs(void) const { return merged_all_roofs_; }
+    MyPointCloud getMergedValidRoofs(void) const { return merged_all_roofs_valid_; }
+    vector<MyPointCloud> getAllRoofs(void) const { return v_roofs_; }
+    vector<MyPointCloud> getAllSupports(void) const { return v_supports_; }
+
 
 public:
-    pcl::PointCloud<pcl::PointXYZ>::Ptr pc_, plane_centers_;
-    vector<pcl::PointCloud<pcl::PointXYZ>> v_planes_;
+    MyPointCloud::Ptr pc_, plane_centers_;
+    
+
 
 private:
+    MyPointCloud merged_all_planes_, merged_all_roofs_, merged_all_roofs_valid_;
+    vector<MyPointCloud> v_roofs_, v_valid_roofs_, v_supports_;
+
     void preProcess(void);
-    void extractClusters(
-        const pcl::PointCloud<pcl::PointXYZ> &cloud_in, 
-        const pcl::PointCloud<pcl::Normal> &normals_in,
-        const pcl::search::Search<pcl::PointXYZ>::Ptr &tree_in,
-        const ClusterParameter& param,
-        std::vector<pcl::PointIndices> &out_cluster);
+    void extractClusters(const MyPointCloud &cloud_in, const ClusterParameter &param, std::vector<pcl::PointIndices> &out_cluster);
+    bool checkIsPlane(const MyPointCloud &cloud_in, const PlaneParameter &pp);
 
     ros::Publisher pubCloud_;
     ros::NodeHandle nh_;
+    
 };
 
 #endif

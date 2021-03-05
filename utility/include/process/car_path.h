@@ -20,6 +20,7 @@
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/kdtree/kdtree_flann.h>
 
+#include "process/tool.h"
 
 using namespace std;
 
@@ -30,15 +31,15 @@ public:
     CarPath(ros::NodeHandle &nh, string filename);
     void pub(void);
     void pubOld(void);
-    double getClosestPointInPath(const pcl::PointXYZ& in, pcl::PointXYZ& out);
-    inline pcl::PointXYZ getBeginPoint(void) const { assert(!pc_->empty()); return (*pc_)[0];}
-    inline pcl::PointXYZ getEndPoint(void) const { assert(!pc_->empty()); return (*pc_)[pc_->size()-1];}
-    inline pcl::PointXYZ getPoint(const int &idx) const { assert(idx < pc_->size() && idx >= 0); return (*pc_)[idx];}
+    double getClosestPointInPath(const MyPoint& in, MyPoint& out);
+    inline MyPoint getBeginPoint(void) const { assert(!pc_->empty()); return (*pc_)[0];}
+    inline MyPoint getEndPoint(void) const { assert(!pc_->empty()); return (*pc_)[pc_->size()-1];}
+    inline MyPoint getPoint(const int &idx) const { assert(idx < pc_->size() && idx >= 0); return (*pc_)[idx];}
 
     void digitalize(void);
 
 public:
-    pcl::PointCloud<pcl::PointXYZ>::Ptr pc_, pc_ori_;
+    MyPointCloud::Ptr pc_, pc_ori_;
 
 private:
     
