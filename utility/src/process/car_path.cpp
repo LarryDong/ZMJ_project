@@ -4,20 +4,16 @@
 
 #include <pcl/filters/passthrough.h>
 
-bool comp_smaller(const pcl::PointXYZ &p1, const pcl::PointXYZ &p2){
-    return p1.y < p2.y;
-}
-bool comp_bigger(const pcl::PointXYZ &p1, const pcl::PointXYZ &p2){
-    return p1.y > p2.y;
-}
-bool comp(const pcl::PointXYZ &p1, const pcl::PointXYZ &p2){
+
+bool comp(const MyPoint &p1, const MyPoint &p2){
     return fabs(p1.y) < fabs(p2.y);
 }
 
 CarPath::CarPath(ros::NodeHandle &nh, string filename) : 
     nh_(nh),
-    pc_(new pcl::PointCloud<pcl::PointXYZ>()),
-    pc_ori_(new pcl::PointCloud<pcl::PointXYZ>())
+    step_(0.01),
+    pc_(new MyPointCloud()),
+    pc_ori_(new MyPointCloud())
 
 {
     ifstream in(filename);
@@ -27,7 +23,7 @@ CarPath::CarPath(ros::NodeHandle &nh, string filename) :
     }
     while (!in.eof()){
         double tmp; // orientation information is useless;
-        pcl::PointXYZ p;
+        MyPoint p;
         in >> p.x >> p.y >> p.z >> tmp >> tmp >> tmp >> tmp;
         pc_->push_back(p);
     }
@@ -68,21 +64,19 @@ void CarPath::pubOld(void) {
 
 // smooth the path;
 void CarPath::preProcess(void){
-    vector<pcl::PointXYZ> points, pts2;
+    vector<MyPoint> points, pts2;
     points.resize(pc_->size());
     for(int i=0; i<pc_->size(); ++i){
         points[i] = (*pc_)[i];
     }
 
-    // 1. delete dense_points region
+    // 1. delete dense_points region. May stayed at some places.
     sort(points.begin(), points.end(), comp);       // no matter to y-/y+, always abs smaller.
     assert(points.size() != 0);
-    // pc_->resize(0);     // clean the points.
-    pcl::PointXYZ p_old = points[0];
+    MyPoint p_old = points[0];
     for(int i=1; i<points.size()-1; i++){
-        pcl::PointXYZ p = points[i];
+        MyPoint p = points[i];
         if(fabs(p.y - p_old.y) > 0.02){         // 2 cm in y-axis;
-            // pc_->push_back(p);
             pts2.push_back(p);
         }
         p_old = p;
@@ -91,7 +85,7 @@ void CarPath::preProcess(void){
     // 2. Smooth by two-neighbor average. (1:2:1)/4
     pc_->resize(0);
     for(int i=1; i<pts2.size()-1; ++i){
-        pcl::PointXYZ pb = pts2[i - 1], p = pts2[i], pn = pts2[i + 1];
+        MyPoint pb = pts2[i - 1], p = pts2[i], pn = pts2[i + 1];
         p.x = (pb.x + pn.x + p.x * 2) / 4;
         p.y = (pb.y + pn.y + p.y * 2) / 4;
         p.z = (pb.z + pn.z + p.z * 2) / 4;
@@ -100,18 +94,62 @@ void CarPath::preProcess(void){
 }
 
 
-double CarPath::getClosestPointInPath(const pcl::PointXYZ& in, pcl::PointXYZ& out){
-    int min_idx = -1;
-    double min_distance = 999;
-    for (int i = 0; i < pc_->size(); ++i){
-        pcl::PointXYZ p = (*pc_)[i];
-        double dist = tool::calDistance(in, p);
-        if (dist < min_distance){
-            min_distance = dist;
-            min_idx = i;
-        }
-    }
-    out = (*pc_)[min_idx];
-    return min_distance;
+double CarPath::getClosestPointInPath(const MyPoint& in, MyPoint& out){
+    int idx = abs((int)(in.y / this->step_));
+    out = (*pc_)[idx];
+    return tool::calDistance(in, out);
+    // int min_idx = -1;
+    // double min_distance = 999;
+    // for (int i = 0; i < pc_->size(); ++i){
+    //     MyPoint p = (*pc_)[i];
+    //     double dist = tool::calDistance(in, p);
+    //     if (dist < min_distance){
+    //         min_distance = dist;
+    //         min_idx = i;
+    //     }
+    // }
+    // out = (*pc_)[min_idx];
+    // return min_distance;
 }
 
+
+// to 1cm along y-axis. ATTENTION: always -y direction;
+void CarPath:: digitalize(void){
+
+    vector<MyPoint> pts;      // save pointcloud tmply.
+    pts.resize(pc_->size());
+    for(int i=0; i<pc_->size(); ++i)
+        pts[i] = (*pc_)[i];
+
+    MyPoint pb = getBeginPoint(), pe = getEndPoint();
+    int idx_num = (int)(fabs(pe.y - pb.y) / this->step_);       // index from 0 - end, each 1cm
+    pc_->clear();
+    pc_->resize(0);
+
+    // interpolation (linear) along y-axis;
+    for(int i=0; i<idx_num; ++i){
+        double py = -i * this->step_;
+        MyPoint p_pre = pb;       // init values
+        MyPoint p_next = pe;
+        MyPoint p_insert;
+        for(int j=0; j<pts.size() - 1; ++j){
+            // cout << "p-j: " << getPoint(j).y << ", p-j+1: " << getPoint(j + 1).y << endl;
+            if(fabs(py) < fabs(pts[j].y) || fabs(py) > fabs(pts[j+1].y))     // skip
+                continue;
+            if(fabs(py) >= fabs(pts[j].y))
+                p_pre = pts[j];
+            if(fabs(py) <= fabs(pts[j+1].y))
+                p_next = pts[j+1];
+        }
+        double dx = p_next.x - p_pre.x;
+        double dy = p_next.y - p_pre.y;
+        double dz = p_next.z - p_pre.z;
+        p_insert.y = py;
+        double scale = fabs((p_insert.y - p_pre.y) / dy);
+        p_insert.x = p_pre.x + (dx * scale);        // y-axis is negative;
+        p_insert.z = p_pre.z + (dz * scale);        // z-axis is positive;
+
+        pc_->push_back(p_insert);
+    }
+
+}

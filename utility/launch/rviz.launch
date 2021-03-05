@@ -1,6 +1,0 @@
-<launch>
-    <arg name="rviz" default="true" />
-    <group if="$(arg rviz)">
-        <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz" args="-d $(find utility)/rviz_cfg/config.rviz" />
-    </group>
-</launch>

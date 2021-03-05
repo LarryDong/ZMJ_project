@@ -1,35 +1,61 @@
 
-// 1. load pc
-// 2. show pc in rviz
-// 3. ..
-
-
-#include <iostream>
-
-#include <ros/ros.h>
-#include <sensor_msgs/PointCloud2.h>
-#include <nav_msgs/Path.h>
-
-#include <pcl/io/pcd_io.h>
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/kdtree/kdtree_flann.h>
-#include <pcl/common/transforms.h>
-
-#include <eigen3/Eigen/Core>
 
 #include "process/scene_cloud.h"
 #include "process/car_path.h"
 #include "process/tool.h"
+#include "process/process.h"
+#include "process/defination.h"
 
 
 using namespace std;
 
 
-pcl::PointCloud<pcl::PointXYZ> gCloud1, gCloud2;        // for debug.
-std::vector<ros::Publisher> pubEachPlane;
+DEFINE_string(file_scene_cloud, "ver.pcd", "scene cloud path");
+DEFINE_string(file_model_cloud, "model.pcd", "model cloud path");
+DEFINE_string(file_carpath, "nav_msgs.txt", "car path messages");
+
+
+DEFINE_double(filter_passthrough_xmin, -0.5, "passthrough fitler x range");
+DEFINE_double(filter_passthrough_xmax, 5, "passthrough fitler x range");
+DEFINE_double(filter_downsampling_size, 0.03, "voxel downsampling size");
+
+DEFINE_double(cluster_radius, 0.1, "clustering nn search radius");
+DEFINE_double(cluster_angle1, M_PI/10, "smaller angle tolerance");
+DEFINE_double(cluster_angle2, M_PI, "larger angle tolerance");
+DEFINE_double(cluster_distance1, 0.2, "clustering distance tolerance");
+DEFINE_double(cluster_distance2, 0.2, "clustering distance tolerance");
+DEFINE_double(cluster_size_min1, 100, "minimum cluster size");
+DEFINE_double(cluster_size_max1, 100000, "max cluster size");
+DEFINE_double(cluster_size_min2, 100, "minimum cluster size");
+DEFINE_double(cluster_size_max2, 100000, "max cluster size");
+
+// plane
+DEFINE_double(plane_l1l3_ratio1, 50, "plane l1/l3");
+DEFINE_double(plane_l1l2_ratio1, 5, "plane l1/l2");
+DEFINE_double(plane_l1l3_ratio2, 50, "plane l1/l3");
+DEFINE_double(plane_l1l2_ratio2, 5, "plane l1/l2");
+
+// support parameters
+DEFINE_double(support_width, 2, "support width");
+DEFINE_double(support_height, 5, "support height");
+DEFINE_int32(support_direction, 1, "on +x or -x direction");
+// roofs
+DEFINE_double(roof_norm_angle, M_PI/10, "roof norm along z-axis");
+DEFINE_double(roof_x_min, -1, "x-range");
+DEFINE_double(roof_x_max, 1, "x-range");
+DEFINE_double(roof_z_min, 1, "z-range");
+DEFINE_double(roof_z_max, 5, "z-range");
+// segment
+DEFINE_double(support_segment_y, 2.5, "segment along y axis range");
+DEFINE_double(support_segment_z_min, 0, "segment along z axis min");
+DEFINE_double(support_segment_z_max, 100, "segment along z axis max");
+DEFINE_double(support_segment_x_min, -1, "segment along x axis min");
+DEFINE_double(support_segment_x_max, 10, "segment along x axis max");
+
+
+
+MyPointCloud gCloud1, gCloud2;        // for debug.
+
 
 ros::Publisher pubPlanes, pubPlaneCenters;
 ros::Publisher pubNormalizedCloud, pubNormlizedCar;
@@ -37,71 +63,57 @@ ros::Publisher pubNormalizedCloud, pubNormlizedCar;
 Eigen::Matrix4d gGlobalTransform = Eigen::Matrix4d::Identity();
 
 
-void calcGlobalT(const CarPath& cp){
-    Eigen::Vector3d pb = tool::xyz2vector(cp.getBeginPoint());  // path_begin
-    Eigen::Vector3d pe = tool::xyz2vector(cp.getEndPoint());
-    Eigen::Vector3d dir = pe - pb;
-    dir.normalize();
-
-    cout << "car from: (" << pb(0) << ", " << pb(1) << ", " << pb(2)
-        << "), to: (" << pe(0) << ", " << pe(1) << ", " << pe(2) << ")" << endl;
-
-    Eigen::Vector3d xn, yn, zn;
-    zn << 0, 0, 1;
-    yn = dir - dir.dot(zn) * zn;      // project x to z;
-    yn = -yn;                         // rotate to original direction; moving direction is always (-y).
-
-    yn.normalize();
-    xn = yn.cross(zn);
-    xn.normalize();
-
-    Eigen::Matrix3d R;      // R: from new coordinate to the old; R*vn = v
-    R.col(0) = xn;
-    R.col(1) = yn;
-    R.col(2) = zn;
-    
-    // explain the rotation:
-    // v: points vector in old coordinate; vn: points vector in new coordiante;
-    // x, y, z: new coordiante's axis representated by old coordiante axis;
-    // [x, y, z]*v = [xn, yn, zn]*vn + t, where t = pb;  --> vn = -R^(-1)*v - R^(-1)*pb
-    gGlobalTransform.topLeftCorner<3, 3>(0, 0) = R.transpose();
-    gGlobalTransform.col(3).head(3) = -R.transpose() * pb;
-
-    cout << "Final transform (from old points to new points): \n" << gGlobalTransform << endl;
-}
-
-
-void updateCoordinate(CarPath& cp, SceneCloud& sc, const Eigen::Matrix4d& T){
-    pcl::PointCloud<pcl::PointXYZ> new_scene_pc;
-    pcl::transformPointCloud(*(sc.pc_), new_scene_pc, T.cast<float>());
-    *(sc.pc_) = new_scene_pc;
-    
-    pcl::PointCloud<pcl::PointXYZ> new_path_pc;
-    pcl::transformPointCloud(*(cp.pc_), new_path_pc, T.cast<float>());
-    *(cp.pc_) = new_path_pc;
-}
-
 
 int main(int argc, char **argv){
 
+    google::ParseCommandLineFlags(&argc, &argv, true);
     ros::init(argc, argv, "process");
     ros::NodeHandle nh;
+    ROS_WARN("Process node begin...");
 
-    // pubs for debug
+    std::vector<ros::Publisher> pubEachPlane, pubEachSupport;
     pubPlanes = nh.advertise<sensor_msgs::PointCloud2>("/all_planes", 1);
+    ros::Publisher pubRoofs = nh.advertise<sensor_msgs::PointCloud2>("/all_roofs", 1);
+    ros::Publisher pubValidRoofs = nh.advertise<sensor_msgs::PointCloud2>("/valid_roofs", 1);
     pubPlaneCenters = nh.advertise<sensor_msgs::PointCloud2>("/all_plane_centers", 1);
     pubNormalizedCloud = nh.advertise<sensor_msgs::PointCloud2>("/normalized_clouds", 1);
     pubNormlizedCar = nh.advertise<sensor_msgs::PointCloud2>("/normalized_car_path", 1);
+    
+    // ros::Publisher debugPub = nh.advertise<sensor_msgs::PointCloud2>("/car_path_before", 1);
 
-    string filename = "ver.pcd";
-    SceneCloud scene_cloud(nh, filename);
+    ROS_WARN("Loading data...");
+    SceneCloud scene_cloud(nh, FLAGS_file_scene_cloud);
+    CarPath car_path(nh, FLAGS_file_carpath);
 
-    string nav_file = "nav_msgs.txt";
-    CarPath car_path(nh, nav_file);
-
-    calcGlobalT(car_path);
+    ROS_WARN("Calculating global transform...");
+    gGlobalTransform = calcGlobalT(car_path);
     updateCoordinate(car_path, scene_cloud, gGlobalTransform);
-    scene_cloud.filter();
+    scene_cloud.filter(FLAGS_filter_downsampling_size, FLAGS_filter_passthrough_xmin, FLAGS_filter_passthrough_xmax);
+    car_path.digitalize();
+
+    ROS_WARN("Segment...");
+    ClusterParameter cp(FLAGS_cluster_angle1, FLAGS_cluster_distance1, FLAGS_cluster_size_min1, FLAGS_cluster_size_max1, FLAGS_cluster_radius);
+    PlaneParameter pp(FLAGS_plane_l1l3_ratio1, FLAGS_plane_l1l2_ratio1);
+    scene_cloud.mergeAllPlanes(cp, pp);
+
+    cp.reset(FLAGS_cluster_angle2, FLAGS_cluster_distance2, FLAGS_cluster_size_min2, FLAGS_cluster_size_max2, FLAGS_cluster_radius);
+    pp.reset(FLAGS_plane_l1l3_ratio2, FLAGS_plane_l1l2_ratio2);
+    scene_cloud.extractAllRoofs(cp, pp);
+
+    for (int i = 0; i < scene_cloud.getAllRoofs().size(); i++){
+        ros::Publisher tmp = nh.advertise<sensor_msgs::PointCloud2>("/plane_" + std::to_string(i), 1);
+        pubEachPlane.push_back(tmp);
+    }
+
+    SupportParameter sp;
+    sp.setRoof(FLAGS_roof_x_min, FLAGS_roof_x_max, FLAGS_roof_z_min, FLAGS_roof_z_max, FLAGS_roof_norm_angle);
+    sp.setSegment(FLAGS_support_segment_x_min, FLAGS_support_segment_x_max, FLAGS_support_segment_y, FLAGS_support_segment_z_min, FLAGS_support_segment_z_max);
+    scene_cloud.selectRoofs(car_path, sp);
+
+    for (int i = 0; i < scene_cloud.getAllSupports().size(); i++){
+        ros::Publisher tmp = nh.advertise<sensor_msgs::PointCloud2>("/support_" + std::to_string(i), 1);
+        pubEachSupport.push_back(tmp);
+    }
 
 
 
@@ -110,6 +122,17 @@ int main(int argc, char **argv){
 
         scene_cloud.pub();      // full scene cloud
         car_path.pub();        // car path 
+        pubPlanes.publish(tool::pointCloud2RosMsg(scene_cloud.getMergedPlanes()));
+        pubRoofs.publish(tool::pointCloud2RosMsg(scene_cloud.getMergedRoofs()));
+        pubPlaneCenters.publish(tool::pointCloud2RosMsg(*scene_cloud.plane_centers_));
+        pubValidRoofs.publish(tool::pointCloud2RosMsg(scene_cloud.getMergedValidRoofs()));
+
+        for (int i = 0; i < pubEachPlane.size(); ++i){
+            pubEachPlane[i].publish(tool::pointCloud2RosMsg(scene_cloud.getAllRoofs()[i]));
+        }
+        for (int i = 0; i < pubEachSupport.size(); ++i){
+            pubEachSupport[i].publish(tool::pointCloud2RosMsg(scene_cloud.getAllSupports()[i]));
+        }
 
         ros::spinOnce();
         r.sleep();

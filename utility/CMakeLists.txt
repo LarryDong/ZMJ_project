@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
     sensor_msgs
     pcl_conversions
     pcl_ros
+    gflags_catkin       # gflags
 )
 
 ## System dependencies are found with CMake's conventions
@@ -58,8 +59,16 @@ add_executable (process
     src/process/main.cpp
     src/process/car_path.cpp
     src/process/scene_cloud.cpp
+    src/process/process.cpp
 )
 target_link_libraries (process ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
-# add_executable (process src/process.cpp)
-# target_link_libraries (process ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
+# extract model
+add_executable(extract_model_node 
+    src/process/extract_model.cpp
+    src/process/car_path.cpp
+    # src/process/scene_cloud.cpp
+    src/process/process.cpp
+)
+target_link_libraries(extract_model_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
