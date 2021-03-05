@@ -30,12 +30,11 @@ void SceneCloud::preProcess(void){
     ROS_INFO("Preprocess. TODO.");
 }
 
-void SceneCloud::filter(void){    
-    // 
-    ROS_INFO("Filtering SceneCloud. downsampling, passthrough, statistical");
+void SceneCloud::filter(double sz, double xmin, double xmax){    
+    ROS_INFO_STREAM("Filter. ds: " << sz << ", ps: [" << xmin << ", " << xmax << "], and statistical");
+    assert(xmax > xmin && sz > 0);
 
     pcl::VoxelGrid<pcl::PointXYZ> downSizeFilter;
-    double sz = 0.03;
     downSizeFilter.setLeafSize(sz, sz, sz);
     downSizeFilter.setInputCloud(pc_);
     downSizeFilter.filter(*pc_);
@@ -53,9 +52,11 @@ void SceneCloud::filter(void){
     pcl::PassThrough<pcl::PointXYZ> pass;
     pass.setInputCloud(pc_);
     pass.setFilterFieldName("x");
-    pass.setFilterLimits(-0.5, 5.0);        // Filter by parameters;
+    pass.setFilterLimits(xmin, xmax);        // Filter by parameters;
     pass.filter(*pc_);
 }
+
+
 
 void SceneCloud::detectPlanes(void){
 

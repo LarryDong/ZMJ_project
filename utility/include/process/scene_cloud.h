@@ -62,7 +62,7 @@ public:
     void pub();
 
     void detectPlanes(void);
-    void filter(void);
+    void filter(double ds, double xmin, double xmax);
 
 public:
     pcl::PointCloud<pcl::PointXYZ>::Ptr pc_, plane_centers_;
