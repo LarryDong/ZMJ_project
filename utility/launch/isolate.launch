@@ -1,0 +1,10 @@
+<launch>
+    <node name="isolate_node" pkg="utility" type="extract_model_node" output="screen"
+    args="--flagfile=$(find utility)/configure/settings.cfg" />
+
+    <arg name="rviz" default="true" />
+    <group if="$(arg rviz)">
+        <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz" args="-d $(find utility)/configure/isolate.rviz" />
+    </group>
+</launch>
+
