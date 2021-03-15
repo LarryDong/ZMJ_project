@@ -40,36 +40,30 @@ class SceneCloud{
 public:
     SceneCloud() { cout << "[Error]. Not allowed empty input."; }
     SceneCloud(ros::NodeHandle &nh, string filename);
-    void pub();
+
     void filter(double ds, double xmin, double xmax);
     int mergeAllPlanes(const ClusterParameter& cp, const PlaneParameter& pp);
     int extractAllRoofs(const ClusterParameter& cp, const PlaneParameter& pp);
     int selectRoofs(const CarPath& cp, const SupportParameter& sp);
 
-
+    MyPointCloud getFullPointCloud(void) const { return *pc_; }
+    MyPointCloud resetFullPointCloud(const MyPointCloud& input_pc) {*pc_ = input_pc;}
     MyPointCloud getMergedPlanes(void) const { return merged_all_planes_; }
     MyPointCloud getMergedRoofs(void) const { return merged_all_roofs_; }
     MyPointCloud getMergedValidRoofs(void) const { return merged_all_roofs_valid_; }
+    MyPointCloud getAllPlaneCenters(void) const { return *plane_centers_; }
     vector<MyPointCloud> getAllRoofs(void) const { return v_roofs_; }
     vector<MyPointCloud> getAllSupports(void) const { return v_supports_; }
 
 
-public:
-    MyPointCloud::Ptr pc_, plane_centers_;
-    
-
-
 private:
+    MyPointCloud::Ptr pc_, plane_centers_;
     MyPointCloud merged_all_planes_, merged_all_roofs_, merged_all_roofs_valid_;
     vector<MyPointCloud> v_roofs_, v_valid_roofs_, v_supports_;
 
     void preProcess(void);
     void extractClusters(const MyPointCloud &cloud_in, const ClusterParameter &param, std::vector<pcl::PointIndices> &out_cluster);
     bool checkIsPlane(const MyPointCloud &cloud_in, const PlaneParameter &pp);
-
-    ros::Publisher pubCloud_;
-    ros::NodeHandle nh_;
-    
 };
 
 #endif

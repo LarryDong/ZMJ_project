@@ -42,12 +42,12 @@ Eigen::Matrix4d calcGlobalT(const CarPath& cp){
 }
 
 
-void updateCoordinate(CarPath& cp, SceneCloud& sc, const Eigen::Matrix4d& T){
+void updateCoordinate(CarPath& cp, SceneCloud& sc, const Eigen::Matrix4d& T){       // reset scene_cloud and car_path by new T.
     pcl::PointCloud<pcl::PointXYZ> new_scene_pc;
-    pcl::transformPointCloud(*(sc.pc_), new_scene_pc, T.cast<float>());
-    *(sc.pc_) = new_scene_pc;
+    pcl::transformPointCloud(sc.getFullPointCloud(), new_scene_pc, T.cast<float>());
+    sc.resetFullPointCloud(new_scene_pc);
     
     pcl::PointCloud<pcl::PointXYZ> new_path_pc;
-    pcl::transformPointCloud(*(cp.pc_), new_path_pc, T.cast<float>());
-    *(cp.pc_) = new_path_pc;
+    pcl::transformPointCloud(cp.getFullPointCloud(), new_path_pc, T.cast<float>());
+    cp.resetFullPointCloud(new_path_pc);
 }

@@ -5,7 +5,6 @@
 extern MyPointCloud gCloud1, gCloud2;
 
 SceneCloud::SceneCloud(ros::NodeHandle &nh, string filename) : 
-    nh_(nh),
     pc_(new MyPointCloud()),
     plane_centers_(new MyPointCloud())
 {
@@ -13,16 +12,6 @@ SceneCloud::SceneCloud(ros::NodeHandle &nh, string filename) :
         cout << "[Error]. Cannot open '" << filename << "'. " << endl;
         return ;
     }
-    pubCloud_ = nh_.advertise<sensor_msgs::PointCloud2>("/scene_cloud", 5);
-    preProcess();
-}
-
-
-void SceneCloud::pub(void){     // pub pointcloud
-    sensor_msgs::PointCloud2 scene_cloud_msg;
-    pcl::toROSMsg(*pc_, scene_cloud_msg);
-    scene_cloud_msg.header.frame_id = "/laser_link";
-    pubCloud_.publish(scene_cloud_msg);
 }
 
 
@@ -200,7 +189,7 @@ int SceneCloud::selectRoofs(const CarPath& cp, const SupportParameter& sp){
         // check.
         MyPoint center = tool::vector2xyz(center4.head(3).cast<double>());
         plane_centers_->push_back(center);
-        MyPoint np = cp.getPoint((int)(fabs(center.y) * 100));  // nearest path point.
+        MyPoint np = cp.getAnyPoint((int)(fabs(center.y) * 100));  // nearest path point.
 
         cout << "--> Center: [" << center.x << ", " << center.y << ", " << center.z << "]" << endl;
         cout << "    Path  : [" << np.x << ", " << np.y << ", " << np.z << "]" << endl;

@@ -10,7 +10,6 @@ bool comp(const MyPoint &p1, const MyPoint &p2){
 }
 
 CarPath::CarPath(ros::NodeHandle &nh, string filename) : 
-    nh_(nh),
     step_(0.01),
     pc_(new MyPointCloud()),
     pc_ori_(new MyPointCloud())
@@ -27,37 +26,13 @@ CarPath::CarPath(ros::NodeHandle &nh, string filename) :
         in >> p.x >> p.y >> p.z >> tmp >> tmp >> tmp >> tmp;
         pc_->push_back(p);
     }
-    
     if(pc_->size()==0){
         cout << "[Error]. Empty car path" << endl;
         return ;
     }
 
-    pubCloud_ = nh_.advertise<sensor_msgs::PointCloud2>("/car_path_cloud", 5);
-
     *pc_ori_ = *pc_;
-    pubCloud_ori_= nh_.advertise<sensor_msgs::PointCloud2>("/car_path_cloud_old", 5);
-
-
-    moving_direction_ = -1;     // TODO: load settings.
     preProcess();
-}
-
-
-void CarPath::pub(void) {
-    sensor_msgs::PointCloud2 car_msg;
-    pcl::toROSMsg(*pc_, car_msg);
-    car_msg.header.frame_id = "/laser_link";
-    pubCloud_.publish(car_msg);
-}
-
-
-// Not used. Only for debug.
-void CarPath::pubOld(void) {
-    sensor_msgs::PointCloud2 car_msg;
-    pcl::toROSMsg(*pc_ori_, car_msg);
-    car_msg.header.frame_id = "/laser_link";
-    pubCloud_ori_.publish(car_msg);
 }
 
 
@@ -93,23 +68,11 @@ void CarPath::preProcess(void){
     }
 }
 
-
+// since car_path are 1cm increasing in x-axis, only find by x-coordinate.
 double CarPath::getClosestPointInPath(const MyPoint& in, MyPoint& out){
     int idx = abs((int)(in.y / this->step_));
     out = (*pc_)[idx];
     return tool::calDistance(in, out);
-    // int min_idx = -1;
-    // double min_distance = 999;
-    // for (int i = 0; i < pc_->size(); ++i){
-    //     MyPoint p = (*pc_)[i];
-    //     double dist = tool::calDistance(in, p);
-    //     if (dist < min_distance){
-    //         min_distance = dist;
-    //         min_idx = i;
-    //     }
-    // }
-    // out = (*pc_)[min_idx];
-    // return min_distance;
 }
 
 
@@ -133,7 +96,6 @@ void CarPath:: digitalize(void){
         MyPoint p_next = pe;
         MyPoint p_insert;
         for(int j=0; j<pts.size() - 1; ++j){
-            // cout << "p-j: " << getPoint(j).y << ", p-j+1: " << getPoint(j + 1).y << endl;
             if(fabs(py) < fabs(pts[j].y) || fabs(py) > fabs(pts[j+1].y))     // skip
                 continue;
             if(fabs(py) >= fabs(pts[j].y))

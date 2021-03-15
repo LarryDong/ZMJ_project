@@ -29,25 +29,22 @@ class CarPath{
 public:
     CarPath() { cout << "[Error]. Not allowed empty input."; }
     CarPath(ros::NodeHandle &nh, string filename);
-    void pub(void);
-    void pubOld(void);
+
+    MyPointCloud getFullPointCloud(void) const { return *pc_; }
+    MyPointCloud resetFullPointCloud(const MyPointCloud& input_pc) {*pc_ = input_pc;}
+
     double getClosestPointInPath(const MyPoint& in, MyPoint& out);
     inline MyPoint getBeginPoint(void) const { assert(!pc_->empty()); return (*pc_)[0];}
     inline MyPoint getEndPoint(void) const { assert(!pc_->empty()); return (*pc_)[pc_->size()-1];}
-    inline MyPoint getPoint(const int &idx) const { assert(idx < pc_->size() && idx >= 0); return (*pc_)[idx];}
+    inline MyPoint getAnyPoint(const int &idx) const { assert(idx < pc_->size() && idx >= 0); return (*pc_)[idx];}
 
     void digitalize(void);
 
-public:
-    MyPointCloud::Ptr pc_, pc_ori_;
-
 private:
-    
-    void preProcess(void);
-    ros::Publisher pubCloud_, pubCloud_ori_;
-    ros::NodeHandle nh_;
-    int moving_direction_;      // 1: y+; -1: y-
+    MyPointCloud::Ptr pc_, pc_ori_;
     double step_;
+
+    void preProcess(void);
 };
 
 #endif
