@@ -201,7 +201,7 @@ int SceneCloud::selectRoofs(const CarPath& cp, const SupportParameter& sp){
         && np.z + sp.roof_z_min < center.z && np.z + sp.roof_z_max > center.z){
             is_valid = true;
         }
-        // 2. check to norm direction; TODO:
+        // 2. check to norm direction; TODO: Not implemented yet.
 
         if(is_valid){
             v_path_points.push_back(np);
@@ -245,6 +245,8 @@ int SceneCloud::selectRoofs(const CarPath& cp, const SupportParameter& sp){
         v_supports_.push_back(*one_pc);
     }
     ROS_INFO("Segment support finished...");
+
+    // cout << "Sp: x(" << sp.segment_x_min << ", " << sp.segment_x_max << "), z: (" << sp.segment_z_min << ", " << sp.segment_z_max << "). " << endl;
 
     return 0;
 }

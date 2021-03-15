@@ -48,11 +48,11 @@ DEFINE_double(roof_x_max, 1, "x-range");
 DEFINE_double(roof_z_min, 1, "z-range");
 DEFINE_double(roof_z_max, 5, "z-range");
 // segment
-DEFINE_double(suplane_parameterort_segment_y, 2.5, "segment along y axis range");
-DEFINE_double(suplane_parameterort_segment_z_min, 0, "segment along z axis min");
-DEFINE_double(suplane_parameterort_segment_z_max, 100, "segment along z axis max");
-DEFINE_double(suplane_parameterort_segment_x_min, -1, "segment along x axis min");
-DEFINE_double(suplane_parameterort_segment_x_max, 10, "segment along x axis max");
+DEFINE_double(support_segment_y, 2.5, "segment along y axis range");
+DEFINE_double(support_segment_z_min, 0, "segment along z axis min");
+DEFINE_double(support_segment_z_max, 100, "segment along z axis max");
+DEFINE_double(support_segment_x_min, -1, "segment along x axis min");
+DEFINE_double(support_segment_x_max, 10, "segment along x axis max");
 
 
 
@@ -111,7 +111,7 @@ int main(int argc, char **argv){
 
     SupportParameter support_parameter;
     support_parameter.setRoof(FLAGS_roof_x_min, FLAGS_roof_x_max, FLAGS_roof_z_min, FLAGS_roof_z_max, FLAGS_roof_norm_angle);
-    support_parameter.setSegment(FLAGS_suplane_parameterort_segment_x_min, FLAGS_suplane_parameterort_segment_x_max, FLAGS_suplane_parameterort_segment_y, FLAGS_suplane_parameterort_segment_z_min, FLAGS_suplane_parameterort_segment_z_max);
+    support_parameter.setSegment(FLAGS_support_segment_x_min, FLAGS_support_segment_x_max, FLAGS_support_segment_y, FLAGS_support_segment_z_min, FLAGS_support_segment_z_max);
     scene_cloud.selectRoofs(car_path, support_parameter);
 
     for (int i = 0; i < scene_cloud.getAllSupports().size(); i++){
