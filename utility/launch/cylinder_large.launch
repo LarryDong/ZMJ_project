@@ -1,0 +1,10 @@
+<launch>
+    <node name="cylinder_node" pkg="utility" type="cylinder_node" output="screen"
+    args="--flagfile=$(find utility)/configure/settings_large.cfg" />
+
+    <arg name="rviz" default="true" />
+    <group if="$(arg rviz)">
+        <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz" args="-d $(find utility)/configure/cylinder.rviz" />
+    </group>
+</launch>
+

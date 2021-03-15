@@ -64,11 +64,18 @@ add_executable (process
 target_link_libraries (process ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
 
-# extract model
-add_executable(extract_model_node 
-    src/process/extract_model.cpp
-    src/process/car_path.cpp
-    # src/process/scene_cloud.cpp
-    src/process/process.cpp
+# # extract model
+# add_executable(extract_model_node 
+#     src/process/extract_model.cpp
+#     src/process/car_path.cpp
+#     # src/process/scene_cloud.cpp
+#     src/process/process.cpp
+# )
+# target_link_libraries(extract_model_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
+
+# development
+add_executable(cylinder_node
+    src/develop/cylinder.cpp
 )
-target_link_libraries(extract_model_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+target_link_libraries(cylinder_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})

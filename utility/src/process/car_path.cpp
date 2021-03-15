@@ -9,7 +9,7 @@ bool comp(const MyPoint &p1, const MyPoint &p2){
     return fabs(p1.y) < fabs(p2.y);
 }
 
-CarPath::CarPath(ros::NodeHandle &nh, string filename) : 
+CarPath::CarPath(string filename) : 
     step_(0.01),
     pc_(new MyPointCloud()),
     pc_ori_(new MyPointCloud())

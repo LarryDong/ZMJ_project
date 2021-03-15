@@ -14,6 +14,7 @@ using namespace std;
 DEFINE_string(file_scene_cloud, "ver.pcd", "scene cloud path");
 DEFINE_string(file_model_cloud, "model.pcd", "model cloud path");
 DEFINE_string(file_carpath, "nav_msgs.txt", "car path messages");
+DEFINE_string(file_save_support, "./support/", "all supports save file.");
 
 // point cloud filter
 DEFINE_double(filter_passthrough_xmin, -0.5, "passthrough fitler x range");
@@ -84,8 +85,8 @@ int main(int argc, char **argv){
 
     // load data
     ROS_WARN("Loading data...");
-    SceneCloud scene_cloud(nh, FLAGS_file_scene_cloud);
-    CarPath car_path(nh, FLAGS_file_carpath);
+    SceneCloud scene_cloud(FLAGS_file_scene_cloud);
+    CarPath car_path(FLAGS_file_carpath);
 
     // calculate gloabl transformation. -- normalize
     ROS_WARN("Calculating global transform...");
@@ -109,11 +110,20 @@ int main(int argc, char **argv){
         pubEachPlane.push_back(tmp);
     }
 
+    // select support from segmentation
     SupportParameter support_parameter;
     support_parameter.setRoof(FLAGS_roof_x_min, FLAGS_roof_x_max, FLAGS_roof_z_min, FLAGS_roof_z_max, FLAGS_roof_norm_angle);
     support_parameter.setSegment(FLAGS_support_segment_x_min, FLAGS_support_segment_x_max, FLAGS_support_segment_y, FLAGS_support_segment_z_min, FLAGS_support_segment_z_max);
     scene_cloud.selectRoofs(car_path, support_parameter);
 
+    // save supports for future processing;
+    for(int i=0; i<scene_cloud.getAllSupports().size(); ++i){
+        pcl::io::savePCDFileASCII(FLAGS_file_save_support + "support_" + to_string(i) + ".pcd", scene_cloud.getAllSupports()[i]);
+    }
+    ROS_INFO("Saved all supports...");
+
+
+    // pub each supports....
     for (int i = 0; i < scene_cloud.getAllSupports().size(); i++){
         ros::Publisher tmp = nh.advertise<sensor_msgs::PointCloud2>("/support_" + std::to_string(i), 1);
         pubEachSupport.push_back(tmp);

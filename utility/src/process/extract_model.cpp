@@ -47,7 +47,7 @@ int main(int argc, char **argv){
         return -1;
     }
     string nav_file = FLAGS_path_car;
-    CarPath car_path(nh, nav_file);
+    CarPath car_path(nav_file);
 
     Eigen::Matrix4d T = calcGlobalT(car_path);
     pcl::transformPointCloud(pc, pc_new, T.cast<float>());

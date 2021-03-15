@@ -39,7 +39,7 @@ using namespace std;
 class SceneCloud{
 public:
     SceneCloud() { cout << "[Error]. Not allowed empty input."; }
-    SceneCloud(ros::NodeHandle &nh, string filename);
+    SceneCloud(string filename);
 
     void filter(double ds, double xmin, double xmax);
     int mergeAllPlanes(const ClusterParameter& cp, const PlaneParameter& pp);
@@ -54,6 +54,7 @@ public:
     MyPointCloud getAllPlaneCenters(void) const { return *plane_centers_; }
     vector<MyPointCloud> getAllRoofs(void) const { return v_roofs_; }
     vector<MyPointCloud> getAllSupports(void) const { return v_supports_; }
+
 
 
 private:

@@ -11,17 +11,6 @@ typedef pcl::PointXYZ MyPoint;
 typedef pcl::PointCloud<pcl::PointXYZ> MyPointCloud;
 
 
-// class RandColor{
-// public:
-//     RandColor(){
-//         r = rand() % 255;
-//         g = rand() % 255;
-//         b = rand() % 255;
-//     }
-//     double r,g,b;
-// };
-
-
 class ClusterParameter{
 public:
     ClusterParameter(double angle, double dist, int mi, int ma, double radius) : 

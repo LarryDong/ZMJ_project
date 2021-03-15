@@ -4,10 +4,7 @@
 
 extern MyPointCloud gCloud1, gCloud2;
 
-SceneCloud::SceneCloud(ros::NodeHandle &nh, string filename) : 
-    pc_(new MyPointCloud()),
-    plane_centers_(new MyPointCloud())
-{
+SceneCloud::SceneCloud(string filename) : pc_(new MyPointCloud()), plane_centers_(new MyPointCloud()){
     if (pcl::io::loadPCDFile<MyPoint>(filename, *pc_) == -1){
         cout << "[Error]. Cannot open '" << filename << "'. " << endl;
         return ;

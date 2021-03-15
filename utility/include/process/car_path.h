@@ -28,7 +28,7 @@ class CarPath{
 
 public:
     CarPath() { cout << "[Error]. Not allowed empty input."; }
-    CarPath(ros::NodeHandle &nh, string filename);
+    CarPath(string filename);
 
     MyPointCloud getFullPointCloud(void) const { return *pc_; }
     MyPointCloud resetFullPointCloud(const MyPointCloud& input_pc) {*pc_ = input_pc;}
