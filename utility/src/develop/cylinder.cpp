@@ -25,6 +25,10 @@
 #include "process/defination.h"
 #include "process/tool.h"
 
+
+#include <pcl/common/distances.h>
+
+
 using namespace std;
 
 DEFINE_string(file_save_support, "./support/", "all supports save file.");
@@ -43,15 +47,17 @@ public:
 
     CylinderParameters(){}
 
-    CylinderParameters(const pcl::ModelCoefficients& coeff){
+    CylinderParameters(const pcl::ModelCoefficients& coeff, double len){
         cout << "pointer init..." << endl;
         point.x = coeff.values[0];
         point.y = coeff.values[1];
         point.z = coeff.values[2];
-        direction.x = coeff.values[3];
-        direction.y = coeff.values[4];
-        direction.z = coeff.values[5];
+        int sign = coeff.values[5] > 0 ? 1 : -1;
+        direction.x = coeff.values[3] * sign;
+        direction.y = coeff.values[4] * sign;
+        direction.z = coeff.values[5] * sign;
         radius = coeff.values[6];
+        length = len;
     }
 
     void showInfo(void){
@@ -60,7 +66,7 @@ public:
 
     MyPoint point;
     MyPoint direction;
-    double radius;
+    double radius, length;
 
 };
 
@@ -110,11 +116,51 @@ bool extractCylinder(const MyPointCloud::Ptr input_pc, MyPointCloud& output_cyli
         ROS_WARN("Cannot find cylinders....");
         return false;
     }
-    
     return true;
 
 }
 
+
+void cylinder_filter(MyPointCloud& pc){
+    int K = 50;
+    double std = 1;         // 1 sigma
+    pcl::StatisticalOutlierRemoval<MyPoint> sor;
+    MyPointCloud::Ptr pt(new MyPointCloud);
+    *pt = pc;
+    sor.setInputCloud(pt);
+    sor.setMeanK(K);
+    sor.setStddevMulThresh(std);
+    sor.filter(pc);
+}
+
+// TODO: 
+void update_coeff(const MyPointCloud& pc, pcl::ModelCoefficients& coeff, double& length){
+    MyPoint min_p, max_p;
+    pcl::getMinMax3D(pc, min_p, max_p);
+    length = max_p.z - min_p.z;
+
+    cout << "min: " << min_p << ", max: " << max_p << endl;
+    double middle_z = (max_p.z + min_p.z) / 2;
+
+    Eigen::Vector3d middle_point, any_point, direction;
+    any_point(0) = coeff.values[0];
+    any_point(1) = coeff.values[1];
+    any_point(2) = coeff.values[2];
+    double sign = coeff.values[5] > 0 ? 1 : -1;
+
+    // direction always to z+ 
+    direction(0) = coeff.values[3] * sign;
+    direction(1) = coeff.values[4] * sign;
+    direction(2) = coeff.values[5] * sign;
+
+    double diff_z = middle_z - any_point(2);
+    double diff_x = diff_z * (direction(0)/direction(2));       // dx/dx = axis_x / axis_z
+    double diff_y = diff_z * (direction(1)/direction(2));
+
+    coeff.values[0] = any_point(0) + diff_x;
+    coeff.values[1] = any_point(1) + diff_y;
+    coeff.values[2] = any_point(2) + diff_z;
+}
 
 
 int main(int argc, char **argv){
@@ -171,16 +217,22 @@ int main(int argc, char **argv){
         pass.filter(*right_half);
         
         if(extractCylinder(left_half, one_cylinder, coeff)){
+            cylinder_filter(one_cylinder);
             all_cylinder_pc += one_cylinder;
+            double length;
+            update_coeff(one_cylinder, coeff, length);
             v_coefficients.push_back(coeff);
-            // CylinderParameters ctmp(coeff);
-            cylinders.push_back(coeff);
+            CylinderParameters cp(coeff, length);
+            cylinders.push_back(cp);
         }
         if(extractCylinder(right_half, one_cylinder, coeff)){
+            cylinder_filter(one_cylinder);
             all_cylinder_pc += one_cylinder;
+            double length;
+            update_coeff(one_cylinder, coeff, length);
             v_coefficients.push_back(coeff);
-            // cylinders.push_back(CylinderParameters(coeff));
-            cylinders.push_back(coeff);
+            CylinderParameters cp(coeff, length);
+            cylinders.push_back(cp);
         }
     }
 
@@ -189,31 +241,30 @@ int main(int argc, char **argv){
     const int cylinder_number = v_coefficients.size();
 
 
-    visualization_msgs::MarkerArray markers;
+    visualization_msgs::Marker marker;
+    marker.header.frame_id="/laser_link";
+    marker.type = visualization_msgs::Marker::CYLINDER;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.color.b = 0.0; 
+    marker.color.g = 1.0;
+    marker.color.r = 0.0;
+    marker.color.a = 0.5;
+    visualization_msgs::MarkerArray marker_array;
     for(int i=0; i<cylinders.size(); ++i){
-        // ros::Publisher tmp = nh.advertise<visualization_msgs::>("/cylinder_marker_" + std::to_string(i), 1);
-        // drawEachCylinder.push_back(tmp);
-
         // extract each cylinder
         CylinderParameters cp = cylinders[i];
-        visualization_msgs::Marker marker;
-        
 
         // calculate orientation:
-        // R = [x, y, z]; z = direction.norm(); x, y orth. to z.
-        // TODO:
-        
         Eigen::Vector3d x, y, z;
         z(0) = cp.direction.x;
         z(1) = cp.direction.y;
         z(2) = cp.direction.z;
         z.normalize();
-        cout << "No. " << i << ",Z: " << z.transpose() << endl;
         // z \cdot x = 0 --> z0x0+z1x1+z2x2=0 --> let x2=0, x0/x1 can be calculated.
         double b_over_a = z(2) / z(1);                      // z(2)/z(1)
         x(0) = sqrtf(1 / (1 + b_over_a * b_over_a));
         x(1) = -b_over_a * x(0);
-        x(2) = 0;
+        x(2) = 0;                           // x(2) is free-variable
         x.normalize();
 
         y = z.cross(x);
@@ -223,13 +274,9 @@ int main(int argc, char **argv){
         R.col(0) = x;
         R.col(1) = y;
         R.col(2) = z;
-        cout << "Rotation matrix: " << R << endl;
         Eigen::Quaterniond q(R);
 
         marker.id = i;       // Important! Not overwirte the last marker.
-        marker.header.frame_id="/laser_link";
-        marker.type = visualization_msgs::Marker::CYLINDER;
-        marker.action = visualization_msgs::Marker::ADD;
         marker.pose.position.x = cp.point.x;
         marker.pose.position.y = cp.point.y;
         marker.pose.position.z = cp.point.z;
@@ -239,14 +286,9 @@ int main(int argc, char **argv){
         marker.pose.orientation.w = q.w();
         marker.scale.x = cp.radius * 2;
         marker.scale.y = cp.radius * 2;
-        marker.scale.z = 5;
-        marker.color.b = 0.0; 
-        marker.color.g = 1.0;
-        marker.color.r = 0.0;
-        marker.color.a = 0.5;
+        marker.scale.z = cp.length;
 
-        // v_markers.push_back(marker);
-        markers.markers.push_back(marker);
+        marker_array.markers.push_back(marker);
     }
     
 
@@ -258,16 +300,11 @@ int main(int argc, char **argv){
         }
         pubFullPc.publish(tool::pointCloud2RosMsg(full_pc));
         pubCylinder.publish(tool::pointCloud2RosMsg(all_cylinder_pc));
-        
-        // for(int i=0; i<cylinders.size(); ++i){
-        //     drawEachCylinder[i].publish(v_markers[i]);
-        // }
-        drawMarkers.publish(markers);
+        drawMarkers.publish(marker_array);
 
         ros::spinOnce();
         r.sleep();
     }
 
-    // cout << "Cylinder test..." << endl;
     return 0;
 }
