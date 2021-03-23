@@ -6,6 +6,8 @@
 #include <ros/ros.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <nav_msgs/Path.h>
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
 
 #include <pcl/io/pcd_io.h>
 #include <pcl_conversions/pcl_conversions.h>
@@ -17,6 +19,7 @@
 #include <pcl/filters/extract_indices.h>
 #include <pcl/filters/passthrough.h>
 
+#include <eigen3/Eigen/Core>
 
 #include <gflags/gflags.h>
 #include "process/defination.h"
@@ -34,6 +37,32 @@ DEFINE_int32(cylinder_max_iteration, 1000, "max iteration for optimazaion");
 DEFINE_double(support_segment_y, 2.5, "segment along y axis range");
 
 
+class CylinderParameters{
+
+public:
+
+    CylinderParameters(){}
+
+    CylinderParameters(const pcl::ModelCoefficients& coeff){
+        cout << "pointer init..." << endl;
+        point.x = coeff.values[0];
+        point.y = coeff.values[1];
+        point.z = coeff.values[2];
+        direction.x = coeff.values[3];
+        direction.y = coeff.values[4];
+        direction.z = coeff.values[5];
+        radius = coeff.values[6];
+    }
+
+    void showInfo(void){
+        cout << "Point: " << point << ", direction: " << direction << ", radius: " << radius << endl;
+    }
+
+    MyPoint point;
+    MyPoint direction;
+    double radius;
+
+};
 
 
 bool extractCylinder(const MyPointCloud::Ptr input_pc, MyPointCloud& output_cylinder, pcl::ModelCoefficients& coefficient){
@@ -65,9 +94,12 @@ bool extractCylinder(const MyPointCloud::Ptr input_pc, MyPointCloud& output_cyli
     seg.setInputCloud(cloud);
     seg.setInputNormals(cloud_normals);
     seg.segment(*inliers_cylinder, *coefficients_cylinder);
+    coefficient = *coefficients_cylinder;
 
     std::cerr << "Cylinder coefficients: " << *coefficients_cylinder << std::endl;
-
+    // CylinderParameters cylinder(coefficients_cylinder);
+    // cylinder.showInfo();
+    
     extract.setInputCloud(cloud);
     extract.setIndices(inliers_cylinder);
     extract.setNegative(false);
@@ -93,8 +125,10 @@ int main(int argc, char **argv){
     ROS_WARN("cylinder_node node begin...");
 
     std::vector<ros::Publisher> pubEachSupport;
-    ros::Publisher pubFullPc =nh.advertise<sensor_msgs::PointCloud2>("/full_pointcloud" , 1);
-    ros::Publisher pubCylinder =nh.advertise<sensor_msgs::PointCloud2>("/cylinder" , 1);
+    ros::Publisher pubFullPc = nh.advertise<sensor_msgs::PointCloud2>("/full_pointcloud", 1);
+    ros::Publisher pubCylinder = nh.advertise<sensor_msgs::PointCloud2>("/cylinder", 1);
+    ros::Publisher pubCylinderAxisPoints = nh.advertise<sensor_msgs::PointCloud2>("/cylinder_axis_points", 1);
+    ros::Publisher drawMarkers = nh.advertise<visualization_msgs::MarkerArray>("/cyliner_markers", 1);
 
     MyPointCloud full_pc;
     std::vector<MyPointCloud::Ptr> v_support;
@@ -114,12 +148,12 @@ int main(int argc, char **argv){
         ros::Publisher tmp = nh.advertise<sensor_msgs::PointCloud2>("/support_" + std::to_string(i), 1);
         pubEachSupport.push_back(tmp);
     }
-
     vector<double> distance = {-0.37, -3.44, -6.54, -9.40, -12.25};       // from car_path. 
 
 
     MyPointCloud all_cylinder_pc;
     std::vector<pcl::ModelCoefficients> v_coefficients;
+    std::vector<CylinderParameters> cylinders;
 
     // extract cylinder from each half.
     for(int i=0; i<v_support.size(); ++i){
@@ -139,15 +173,82 @@ int main(int argc, char **argv){
         if(extractCylinder(left_half, one_cylinder, coeff)){
             all_cylinder_pc += one_cylinder;
             v_coefficients.push_back(coeff);
+            // CylinderParameters ctmp(coeff);
+            cylinders.push_back(coeff);
         }
         if(extractCylinder(right_half, one_cylinder, coeff)){
             all_cylinder_pc += one_cylinder;
             v_coefficients.push_back(coeff);
+            // cylinders.push_back(CylinderParameters(coeff));
+            cylinders.push_back(coeff);
         }
-        
     }
-    ROS_INFO_STREAM("Total cylinder: "<< v_coefficients.size());
 
+    
+    ROS_INFO_STREAM("Total cylinder: "<< v_coefficients.size());
+    const int cylinder_number = v_coefficients.size();
+
+
+    visualization_msgs::MarkerArray markers;
+    for(int i=0; i<cylinders.size(); ++i){
+        // ros::Publisher tmp = nh.advertise<visualization_msgs::>("/cylinder_marker_" + std::to_string(i), 1);
+        // drawEachCylinder.push_back(tmp);
+
+        // extract each cylinder
+        CylinderParameters cp = cylinders[i];
+        visualization_msgs::Marker marker;
+        
+
+        // calculate orientation:
+        // R = [x, y, z]; z = direction.norm(); x, y orth. to z.
+        // TODO:
+        
+        Eigen::Vector3d x, y, z;
+        z(0) = cp.direction.x;
+        z(1) = cp.direction.y;
+        z(2) = cp.direction.z;
+        z.normalize();
+        cout << "No. " << i << ",Z: " << z.transpose() << endl;
+        // z \cdot x = 0 --> z0x0+z1x1+z2x2=0 --> let x2=0, x0/x1 can be calculated.
+        double b_over_a = z(2) / z(1);                      // z(2)/z(1)
+        x(0) = sqrtf(1 / (1 + b_over_a * b_over_a));
+        x(1) = -b_over_a * x(0);
+        x(2) = 0;
+        x.normalize();
+
+        y = z.cross(x);
+        y.normalize();
+
+        Eigen::Matrix3d R;
+        R.col(0) = x;
+        R.col(1) = y;
+        R.col(2) = z;
+        cout << "Rotation matrix: " << R << endl;
+        Eigen::Quaterniond q(R);
+
+        marker.id = i;       // Important! Not overwirte the last marker.
+        marker.header.frame_id="/laser_link";
+        marker.type = visualization_msgs::Marker::CYLINDER;
+        marker.action = visualization_msgs::Marker::ADD;
+        marker.pose.position.x = cp.point.x;
+        marker.pose.position.y = cp.point.y;
+        marker.pose.position.z = cp.point.z;
+        marker.pose.orientation.x = q.x();
+        marker.pose.orientation.y = q.y();
+        marker.pose.orientation.z = q.z();
+        marker.pose.orientation.w = q.w();
+        marker.scale.x = cp.radius * 2;
+        marker.scale.y = cp.radius * 2;
+        marker.scale.z = 5;
+        marker.color.b = 0.0; 
+        marker.color.g = 1.0;
+        marker.color.r = 0.0;
+        marker.color.a = 0.5;
+
+        // v_markers.push_back(marker);
+        markers.markers.push_back(marker);
+    }
+    
 
     ros::Rate r(10);
     while(ros::ok()){
@@ -157,6 +258,11 @@ int main(int argc, char **argv){
         }
         pubFullPc.publish(tool::pointCloud2RosMsg(full_pc));
         pubCylinder.publish(tool::pointCloud2RosMsg(all_cylinder_pc));
+        
+        // for(int i=0; i<cylinders.size(); ++i){
+        //     drawEachCylinder[i].publish(v_markers[i]);
+        // }
+        drawMarkers.publish(markers);
 
         ros::spinOnce();
         r.sleep();
