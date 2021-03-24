@@ -77,5 +77,6 @@ target_link_libraries (process ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 # development
 add_executable(cylinder_node
     src/develop/cylinder.cpp
+    src/develop/support_cylinder.cpp
 )
 target_link_libraries(cylinder_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
