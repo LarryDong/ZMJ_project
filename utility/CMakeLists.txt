@@ -80,3 +80,10 @@ add_executable(cylinder_node
     src/develop/support_cylinder.cpp
 )
 target_link_libraries(cylinder_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
+
+# development
+add_executable(pcd2ply_node 
+    src/pcd2ply.cpp
+)
+target_link_libraries(pcd2ply_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
