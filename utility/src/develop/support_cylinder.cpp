@@ -45,9 +45,8 @@ bool Cylinder::detectCylinder(const CylinderParameters& cp){
     pcl::ModelCoefficients::Ptr raw_coeff (new pcl::ModelCoefficients);
     seg.segment(*inliers_cylinder, *raw_coeff);
     // coefficient = *coefficients_cylinder;
-
 #ifdef DEBUG
-    std::cerr << "Cylinder coefficients: " << *raw_coeff << std::endl;
+    // std::cerr << "Cylinder coefficients: " << *raw_coeff << std::endl;
 #endif
 
     extract.setInputCloud(cloud);

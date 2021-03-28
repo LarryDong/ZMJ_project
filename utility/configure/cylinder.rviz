@@ -221,7 +221,7 @@ Visualization Manager:
       Color: 136; 138; 133
       Color Transformer: FlatColor
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
@@ -238,7 +238,7 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
+      Value: true
     - Alpha: 0.5
       Autocompute Intensity Bounds: true
       Autocompute Value Bounds:
@@ -251,7 +251,7 @@ Visualization Manager:
       Color: 239; 41; 41
       Color Transformer: FlatColor
       Decay Time: 0
-      Enabled: false
+      Enabled: true
       Invert Rainbow: false
       Max Color: 255; 255; 255
       Max Intensity: 4096
@@ -268,14 +268,6 @@ Visualization Manager:
       Unreliable: false
       Use Fixed Frame: true
       Use rainbow: true
-      Value: false
-    - Class: rviz/MarkerArray
-      Enabled: true
-      Marker Topic: /cyliner_markers
-      Name: MarkerArray
-      Namespaces:
-        "": true
-      Queue Size: 100
       Value: true
     - Alpha: 0.5
       Autocompute Intensity Bounds: true
@@ -316,66 +308,6 @@ Visualization Manager:
       Axis: Z
       Channel Name: intensity
       Class: rviz/PointCloud2
-      Color: 238; 238; 236
-      Color Transformer: FlatColor
-      Decay Time: 0
-      Enabled: true
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Max Intensity: 4096
-      Min Color: 0; 0; 0
-      Min Intensity: 0
-      Name: non_cylinder_noise
-      Position Transformer: XYZ
-      Queue Size: 10
-      Selectable: true
-      Size (Pixels): 1
-      Size (m): 0.009999999776482582
-      Style: Points
-      Topic: /none_cylinder
-      Unreliable: false
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: true
-    - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: 10
-        Min Value: -10
-        Value: true
-      Axis: Z
-      Channel Name: intensity
-      Class: rviz/PointCloud2
-      Color: 252; 233; 79
-      Color Transformer: FlatColor
-      Decay Time: 0
-      Enabled: true
-      Invert Rainbow: false
-      Max Color: 255; 255; 255
-      Max Intensity: 4096
-      Min Color: 0; 0; 0
-      Min Intensity: 0
-      Name: base_model
-      Position Transformer: XYZ
-      Queue Size: 10
-      Selectable: true
-      Size (Pixels): 1
-      Size (m): 0.009999999776482582
-      Style: Points
-      Topic: /model
-      Unreliable: false
-      Use Fixed Frame: true
-      Use rainbow: true
-      Value: true
-    - Alpha: 1
-      Autocompute Intensity Bounds: true
-      Autocompute Value Bounds:
-        Max Value: 10
-        Min Value: -10
-        Value: true
-      Axis: Z
-      Channel Name: intensity
-      Class: rviz/PointCloud2
       Color: 252; 233; 79
       Color Transformer: FlatColor
       Decay Time: 0
@@ -400,7 +332,15 @@ Visualization Manager:
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /base_markers
-      Name: base_model
+      Name: marker_base
+      Namespaces:
+        "": true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /cyliner_markers
+      Name: marker_cylinder
       Namespaces:
         "": true
       Queue Size: 100
@@ -433,25 +373,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/Orbit
-      Distance: 14.825998306274414
+      Distance: 18.597732543945312
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 3.7709872722625732
-        Y: -2.7757530212402344
+        X: 2.9871060848236084
+        Y: -6.059857368469238
         Z: 0.6381675004959106
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.2247973084449768
+      Pitch: 0.17479728162288666
       Target Frame: <Fixed Frame>
       Value: Orbit (rviz)
-      Yaw: 3.202277660369873
+      Yaw: 3.2422876358032227
     Saved: ~
 Window Geometry:
   Displays:
