@@ -78,6 +78,7 @@ target_link_libraries (process ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 add_executable(cylinder_node
     src/develop/cylinder.cpp
     src/develop/support_cylinder.cpp
+    src/develop/support_base.cpp
 )
 target_link_libraries(cylinder_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
 
@@ -87,3 +88,8 @@ add_executable(pcd2ply_node
     src/pcd2ply.cpp
 )
 target_link_libraries(pcd2ply_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})
+
+add_executable(ply2pcd_node 
+    src/ply2pcd.cpp
+)
+target_link_libraries(ply2pcd_node ${catkin_LIBRARIES} ${PCL_LIBRARIES})

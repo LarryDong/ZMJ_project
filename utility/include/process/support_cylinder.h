@@ -49,6 +49,7 @@ public:
     void resetPointCloud(const MyPointCloud &cloud_in) { pcl::copyPointCloud(cloud_in, raw_cloud_); }
     bool detectCylinder(const CylinderParameters& cp);
     MyPointCloud getCylinderPointCloud(void) {return cylinder_cloud_;}
+    MyPointCloud getNoneCylinderPointCloud(void) {return non_cylinder_cloud_;}
     visualization_msgs::Marker calMarker(double b = 0, double g = 1.0, double r = 0, double a = 0.5);
 
 private:
@@ -56,7 +57,7 @@ private:
     void cylinder_filter(MyPointCloud& pc);
 
     static int marker_id_;
-    MyPointCloud raw_cloud_, cylinder_cloud_;
+    MyPointCloud raw_cloud_, cylinder_cloud_, non_cylinder_cloud_;
     Eigen::Vector3d cylinder_center_;
     Eigen::Quaterniond q_;          // cylinder axis's quat.
     double cylinder_length_;

@@ -46,7 +46,9 @@ bool Cylinder::detectCylinder(const CylinderParameters& cp){
     seg.segment(*inliers_cylinder, *raw_coeff);
     // coefficient = *coefficients_cylinder;
 
+#ifdef DEBUG
     std::cerr << "Cylinder coefficients: " << *raw_coeff << std::endl;
+#endif
 
     extract.setInputCloud(cloud);
     extract.setIndices(inliers_cylinder);
@@ -59,6 +61,11 @@ bool Cylinder::detectCylinder(const CylinderParameters& cp){
     }
 
     calCylinderCoeff(raw_coeff);
+
+    // get none-cylinder cloud
+    extract.setNegative(true);
+    extract.filter(non_cylinder_cloud_);
+
     return true;
 }
 
