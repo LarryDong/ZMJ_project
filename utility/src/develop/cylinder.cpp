@@ -27,19 +27,36 @@
 #include "process/tool.h"
 #include "process/support_cylinder.h"
 #include "process/support_base.h"
+#include "process/support_plane.h"
 
 #include <pcl/common/distances.h>
 
 
 using namespace std;
 
+// file settings
 DEFINE_string(file_save_support, "./support/", "all supports save file.");
+
+// cylinder settings
 DEFINE_double(cylinder_search_radius, 0.2, "cylinder_search_radius");
 DEFINE_double(cylinder_normal_distance_weight, 0.05, "cylinder_normal_distance_weight");
 DEFINE_double(cylinder_distance_threshould, 0.2, "cylinder_distance_threshould");
 DEFINE_double(cylinder_radius_min, 0.1, "cylinder_radius_min");
 DEFINE_double(cylinder_radius_max, 1.0, "cylinder_radius_max");
 DEFINE_int32(cylinder_max_iteration, 1000, "max iteration for optimazaion");
+
+// plane settings
+DEFINE_double(plane_l1l3_ratio1, 50, "plane l1/l3");
+DEFINE_double(plane_l1l2_ratio1, 5, "plane l1/l2");
+DEFINE_double(plane_l1l3_ratio2, 50, "plane l1/l3");
+DEFINE_double(plane_l1l2_ratio2, 5, "plane l1/l2");
+DEFINE_double(roof_norm_angle, M_PI/10, "roof norm along z-axis");
+DEFINE_double(roof_x_min, -1, "x-range");
+DEFINE_double(roof_x_max, 1, "x-range");
+DEFINE_double(roof_z_min, 1, "z-range");
+DEFINE_double(roof_z_max, 5, "z-range");
+
+
 DEFINE_double(support_segment_y, 2.5, "segment along y axis range");
 
 
@@ -60,12 +77,16 @@ int main(int argc, char **argv){
     ros::Publisher pubCylinderAxisPoints = nh.advertise<sensor_msgs::PointCloud2>("/cylinder_axis_points", 1);
     ros::Publisher drawCylinderMarkers = nh.advertise<visualization_msgs::MarkerArray>("/cyliner_markers", 1);
     ros::Publisher drawBaseMarker = nh.advertise<visualization_msgs::MarkerArray>("/base_markers", 1);
+    ros::Publisher drawPlaneMarker = nh.advertise<visualization_msgs::MarkerArray>("/plane_markers", 1);
 
     ros::Publisher pubModelInScene = nh.advertise<sensor_msgs::PointCloud2>("/model_in_scene", 1);
-    visualization_msgs::MarkerArray marker_array_cylinder, marker_array_base;
+
+    ros::Publisher pubPlanes = nh.advertise<sensor_msgs::PointCloud2>("/planes", 1);
+
+    visualization_msgs::MarkerArray marker_array_cylinder, marker_array_base, marker_array_plane;
 
 
-    MyPointCloud full_pc, all_base_in_scene;
+    MyPointCloud full_pc;
     std::vector<MyPointCloud::Ptr> v_support;
     
     for(int i=0; i<100; ++i){
@@ -83,14 +104,15 @@ int main(int argc, char **argv){
         ros::Publisher tmp = nh.advertise<sensor_msgs::PointCloud2>("/support_" + std::to_string(i), 1);
         pubEachSupport.push_back(tmp);
     }
-    vector<double> distance = {-0.37, -3.44, -6.54, -9.40, -12.25};       // from car_path. 
+    vector<double> distance = {-0.37, -3.44, -6.54, -9.40, -12.25};       // from car_path.
 
-
-    MyPointCloud all_cylinder_pc;
+    MyPointCloud all_cylinder_pc, all_base_pc, all_plane_pc;
     std::vector<pcl::ModelCoefficients> v_coefficients;
     std::vector<Cylinder> v_cylinders;
     CylinderParameters cylinder_settings(FLAGS_cylinder_search_radius, FLAGS_cylinder_normal_distance_weight, FLAGS_cylinder_distance_threshould,
                         FLAGS_cylinder_max_iteration, FLAGS_cylinder_radius_min, FLAGS_cylinder_radius_max);
+
+    PlaneParameters plane_settings(FLAGS_roof_x_min, FLAGS_roof_x_max, FLAGS_roof_z_min, FLAGS_roof_z_max);
 
     // extract cylinder from each half.
     for (int i = 0; i < v_support.size(); ++i){
@@ -107,6 +129,7 @@ int main(int argc, char **argv){
         
         MyPointCloud one_support_without_cylinder;
         Cylinder cylinder(*left_half);
+        
         if(cylinder.detectCylinder(cylinder_settings)==true){
             v_cylinders.push_back(cylinder);
             all_cylinder_pc += cylinder.getCylinderPointCloud();
@@ -126,8 +149,13 @@ int main(int argc, char **argv){
             marker_array_base.markers.push_back(base.createBaseMarker());
             MyPointCloud one_model_in_scene;
             pcl::transformPointCloud(base.model_cloud_, one_model_in_scene, base.transformation_);
-            all_base_in_scene += one_model_in_scene;
+            all_base_pc += one_model_in_scene;
         }
+
+        SupportPlane plane(one_support_without_cylinder);
+        plane.detectPlane(plane_settings);
+        all_plane_pc += plane.plane_cloud_;
+        marker_array_plane.markers.push_back(plane.createMarker());
     }
 
     ROS_INFO_STREAM("Total cylinder: "<< v_cylinders.size());
@@ -148,9 +176,11 @@ int main(int argc, char **argv){
         }
         pubFullPc.publish(tool::pointCloud2RosMsg(full_pc));
         pubCylinder.publish(tool::pointCloud2RosMsg(all_cylinder_pc));
+        pubPlanes.publish(tool::pointCloud2RosMsg(all_plane_pc));
         drawCylinderMarkers.publish(marker_array);
         drawBaseMarker.publish(marker_array_base);
-        pubModelInScene.publish(tool::pointCloud2RosMsg(all_base_in_scene));
+        drawPlaneMarker.publish(marker_array_plane);
+        pubModelInScene.publish(tool::pointCloud2RosMsg(all_base_pc));
 
         ros::spinOnce();
         r.sleep();
