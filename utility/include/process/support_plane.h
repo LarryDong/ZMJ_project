@@ -47,7 +47,7 @@ public:
     }
     void resetPointCloud(const MyPointCloud &cloud_in) { pcl::copyPointCloud(cloud_in, raw_cloud_); }
     void detectPlane(const PlaneParameters &pp);
-    visualization_msgs::Marker createMarker(Eigen::Vector4f color = Eigen::Vector4f(0.2, 0.2, 0.8, 1));
+    visualization_msgs::Marker createMarker(Eigen::Vector4f color = Eigen::Vector4f(0.5, 0.5, 1.0, 1));
 
 
     MyPointCloud raw_cloud_, plane_cloud_;
