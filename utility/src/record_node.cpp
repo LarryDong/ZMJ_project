@@ -28,7 +28,7 @@ void handler(const std_msgs::String s){
     if(s.data == "s"){
         mMap.lock();
         pcl::io::savePCDFileASCII("ver.pcd", g_verPointCloud);
-        pcl::io::savePCDFileASCII("hor.pcd", g_horPointCloud);
+        pcl::io::savePCDFileASCII("hor.pcd", g_horPointCloud);  // two clouds are used for extrinsics calibration
 
         // save path files;
         ofstream out("nav_msgs.txt", ios::out);

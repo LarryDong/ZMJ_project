@@ -1,6 +1,0 @@
-<launch>
-    
-    <node pkg="vslam" type="vlaserOdometry_node" name="laserOdometry_node" output="screen" />
-    
-
-</launch>

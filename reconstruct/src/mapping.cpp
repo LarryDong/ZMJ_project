@@ -103,53 +103,28 @@ int main(int argc, char **argv){
     ROS_INFO_STREAM("range: [" << g_min_range << ", " << g_max_range << "].");
     ROS_INFO_STREAM("down-sampling size: " << g_ds_size);
 
-    // STEP 2. Load guess&delta values;
-    Eigen::Matrix3d R_hor_ver, R_delta, R_guess;
-    Eigen::Vector3d t_hor_ver, t_delta, t_guess;
+    // STEP 2. Load init values;
+    Eigen::Matrix3d R_init;
+    Eigen::Vector3d t_init;
 
     double r11, r12, r13, r21, r22, r23, r31, r32, r33, t1, t2, t3;
     Eigen::Matrix4d T_hor_ver = Eigen::Matrix4d::Identity();
-    std::ifstream fguess("/home/larrydong/guess_T.txt");
-    std::ifstream fdelta("/home/larrydong/delta_T.txt");
-    if(!fguess.is_open()){
-        ROS_ERROR("No guess value. Error!");
+    std::ifstream finit("/home/larrydong/guess_T.txt");
+    if(!finit.is_open()){
+        ROS_ERROR("No init value. Error!");
+        std::abort();
     }
     else{
-        fguess >> r11 >> r12 >> r13 >> t1 >> r21 >> r22 >> r23 >> t2 >> r31 >> r32 >> r33 >> t3;
-        // std::cout << r11 << r12 << r13 << std::endl;
-        R_guess << r11, r12, r13, r21, r22, r23, r31, r32, r33;
-        t_guess << t1, t2, t3;
+        finit >> r11 >> r12 >> r13 >> t1 >> r21 >> r22 >> r23 >> t2 >> r31 >> r32 >> r33 >> t3;
+        R_init << r11, r12, r13, r21, r22, r23, r31, r32, r33;
+        t_init << t1, t2, t3;
     }
-    fguess.close();
+    finit.close();
 
-    if(!fdelta.is_open()){
-        ROS_WARN("No delta value. Use identity");
-        R_delta = Eigen::Matrix3d::Identity();
-        t_delta = Eigen::Vector3d::Zero();
-    }
-    else{
-        ROS_WARN("Use delta value to calcualte extrinsics.");
-        fdelta >> r11 >> r12 >> r13 >> t1 >> r21 >> r22 >> r23 >> t2 >> r31 >> r32 >> r33 >> t3;
-        R_delta << r11, r12, r13, r21, r22, r23, r31, r32, r33;
-        t_delta << t1, t2, t3;
-    }
-    fdelta.close();
+    T_hor_ver.topLeftCorner(3, 3) = t_init;
+    T_hor_ver.topRightCorner(3, 1) = t_guess;
+    ROS_INFO_STREAM("T_hor_ver: \n" << T_hor_ver);
 
-    R_hor_ver = R_delta * R_guess;
-    t_hor_ver = R_delta * t_guess + t_delta;
-
-    T_hor_ver.topLeftCorner(3, 3) = R_hor_ver;
-    T_hor_ver.topRightCorner(3, 1) = t_hor_ver;
-    // ROS_INFO_STREAM("T_hor_ver: \n" << T_hor_ver);
-
-    std::ofstream fsave("guess_T.txt", std::ios::out | std::ios::binary);
-    if(fsave.fail()){
-        ROS_ERROR("Cannot save new guess.");
-    }
-    else{
-        fsave << T_hor_ver;
-        std::cout << "Saved new extrinsics: \n" << T_hor_ver << std::endl;
-    }
 
     std::string input_topic_name;
     nh.param<std::string>("topic_name", input_topic_name, "lslidar_point_cloud");
@@ -161,8 +136,7 @@ int main(int argc, char **argv){
     ros::Publisher pubRegisteredPointCloud = nh.advertise<sensor_msgs::PointCloud2>("/ver_point_registered", 100);
     ros::Publisher pubMap = nh.advertise<sensor_msgs::PointCloud2>("/ver_map", 100);
     ros::Publisher pubPath = nh.advertise<nav_msgs::Path>("/car_path", 100);
-    // ros::Publisher pubCleanMap = nh.advertise<sensor_msgs::PointCloud2>("/ver_clean_map", 100);
-    
+
     // -----------------------------------------------------------------------------------------------
 
     ros::Rate rate(100);
@@ -170,11 +144,10 @@ int main(int argc, char **argv){
     size_t system_delay_counter = 0;
 
     int output_ctrl_counter = 0;
-
     while(ros::ok()){
         rate.sleep();
         ros::spinOnce();
-        if (system_delay_counter++ < SystemDelayCnt)        // system delay
+        if (system_delay_counter++ < SystemDelayCnt)        // system delay.    TODO: what's this??
             continue;
         if(pointCloudBuf.empty() || odomBuf.empty())    
             continue;
@@ -223,7 +196,7 @@ int main(int argc, char **argv){
         auto q = currOdom.pose.pose.orientation;
         auto t = currOdom.pose.pose.position;
         Eigen::Quaterniond quart(q.w, q.x, q.y, q.z);
-        T_w_hor.topLeftCorner(3,3) = quart.toRotationMatrix();
+        T_w_hor.topLeftCorner(3, 3) = quart.toRotationMatrix();
         T_w_hor.topRightCorner(4, 1) = Eigen::Vector4d(t.x, t.y, t.z, 1);
 
         Eigen::Matrix4d T_w_ver = T_w_hor * T_hor_ver;          // calculate T_w_ver
