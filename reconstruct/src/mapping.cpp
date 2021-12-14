@@ -121,8 +121,8 @@ int main(int argc, char **argv){
     }
     finit.close();
 
-    T_hor_ver.topLeftCorner(3, 3) = t_init;
-    T_hor_ver.topRightCorner(3, 1) = t_guess;
+    T_hor_ver.topLeftCorner(3, 3) = R_init;
+    T_hor_ver.topRightCorner(3, 1) = t_init;
     ROS_INFO_STREAM("T_hor_ver: \n" << T_hor_ver);
 
 
