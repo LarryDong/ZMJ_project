@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(analyze)
+project(rviz_interface)
 set(CMAKE_BUILD_TYPE "Release")
 
 
@@ -26,20 +26,14 @@ catkin_package()
 
 include_directories(
     include
-    include/pcl_process
     /usr/include/eigen3
     ${catkin_INCLUDE_DIRS}
 )
 
 
-
-add_executable(save_data src/save_data/save_data.cpp)
-target_link_libraries(save_data ${catkin_LIBRARIES} ${PCL_LIBRARIES} gflags)
-
-
-add_executable(process 
-    src/pcl_process/main.cpp
-    src/pcl_process/car_path.cpp
-    src/pcl_process/scene_cloud.cpp
+add_executable(show_data
+    src/main.cpp
 )
-target_link_libraries(process ${catkin_LIBRARIES} ${PCL_LIBRARIES} gflags)
+
+target_link_libraries(show_data ${catkin_LIBRARIES} ${PCL_LIBRARIES} gflags)
+

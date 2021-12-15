@@ -16,9 +16,9 @@
 #include <gflags/gflags.h>
 
 
-DEFINE_string(ver_saving, "/home/larrydong/ver.pcd", "vertical point cloud saved");
-DEFINE_string(hor_saving, "/home/larrydong/hor.pcd", "horizontal point cloud saved");
-DEFINE_string(car_path_saving, "/home/larrydong/car_path.txt", "car path pointcloud.");
+DEFINE_string(ver_saving, "/home/larrydong/lidar_ws/output/raw/ver.pcd", "vertical point cloud saved");
+DEFINE_string(hor_saving, "/home/larrydong/lidar_ws/output/raw/hor.pcd", "horizontal point cloud saved");
+DEFINE_string(car_path_saving, "/home/larrydong/lidar_ws/output/raw/car_path.txt", "car path pointcloud.");
 
 
 using namespace std;
