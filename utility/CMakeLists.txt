@@ -12,7 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
     sensor_msgs
     pcl_conversions
     pcl_ros
-    gflags_catkin       # gflags
+    gflags       # gflags
 )
 
 ## System dependencies are found with CMake's conventions

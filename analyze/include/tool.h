@@ -6,11 +6,15 @@
 #define TOOL_H
 
 #include <iostream>
-#include <pcl/point_types.h>
-// #include <pcl/features/normal_3d.h>
-#include <eigen3/Eigen/Core>
-#include "defination.h"
 
+#include <eigen3/Eigen/Core>
+
+#include <ros/ros.h>
+#include <sensor_msgs/PointCloud2.h>
+
+#include <pcl/point_types.h>
+
+#include "defination.h"
 
 namespace tool
 {

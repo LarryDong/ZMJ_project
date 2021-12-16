@@ -1,6 +1,6 @@
 
 #include "scene_cloud.h"
-#include "pcl_process/scene_cloud.h"
+
 
 extern MyPointCloud gCloud1, gCloud2;
 
@@ -14,11 +14,6 @@ SceneCloud::SceneCloud(string filename) : pc_(new MyPointCloud()),
     cout << "Loaded " << pc_->size() << " pts in sceneCloud from: " << filename << endl;
 }
 
-#if 0
-
-void SceneCloud::preProcess(void){
-    ROS_INFO("Preprocess. TODO.");
-}
 
 void SceneCloud::filter(double sz, double xmin, double xmax){    
     ROS_INFO_STREAM("Filter. ds: " << sz << ", ps: [" << xmin << ", " << xmax << "], and statistical");
@@ -47,8 +42,7 @@ void SceneCloud::filter(double sz, double xmin, double xmax){
 }
 
 
-
-int SceneCloud::mergeAllPlanes(const ClusterParameter& cp, const PlaneParameter& pp){
+int SceneCloud::filerByClustering(const ClusterParameter& cp, const PlaneParameter& pp){
     ROS_INFO("Merge all planes in scene cloud...");
     ROS_INFO_STREAM("Settings. r: " << cp.search_radius << ", angle/dist: " << cp.delta_angle << "/" << cp.delta_distance 
                     << ", size:(" << cp.min_num << ", " << cp.max_num << "), ratio: " << pp.l1l3 << "/" << pp.l1l2);
@@ -57,7 +51,7 @@ int SceneCloud::mergeAllPlanes(const ClusterParameter& cp, const PlaneParameter&
     ROS_INFO_STREAM("[Info] Find " << cluster_indices.size() << " clusters for the first time...");
 
     int plane_number = 0;
-    merged_all_planes_.clear();
+    cluster_filtered_pc_.clear();
     for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it){
         MyPointCloud::Ptr one_cluster(new MyPointCloud);
         for (auto pit = it->indices.begin(); pit != it->indices.end(); ++pit)
@@ -65,7 +59,7 @@ int SceneCloud::mergeAllPlanes(const ClusterParameter& cp, const PlaneParameter&
 
         if(checkIsPlane(*one_cluster, pp)){       // merge into a full cloud;
             plane_number++;
-            merged_all_planes_ += *one_cluster;
+            cluster_filtered_pc_ += *one_cluster;
         }
     }
 
@@ -73,24 +67,23 @@ int SceneCloud::mergeAllPlanes(const ClusterParameter& cp, const PlaneParameter&
     return plane_number;
 }
 
-
-int SceneCloud::extractAllRoofs(const ClusterParameter& cp, const PlaneParameter& pp){
+int SceneCloud::extractPlanes(const ClusterParameter& cp, const PlaneParameter& pp){
     ROS_INFO("Extract all roofs......");
     ROS_INFO_STREAM("Settings. r: " << cp.search_radius << ", angle/dist: " << cp.delta_angle << "/" << cp.delta_distance 
                     << ", size:(" << cp.min_num << ", " << cp.max_num << "), ratio: " << pp.l1l3 << "/" << pp.l1l2);
     vector<pcl::PointIndices> cluster_indices;
-    extractClusters(merged_all_planes_, cp, cluster_indices);
+    extractClusters(cluster_filtered_pc_, cp, cluster_indices);
     ROS_INFO_STREAM("[Info] Find " << cluster_indices.size() << " clusters after the 2nd time...");
 
     int plane_number = 0;
-    merged_all_roofs_.clear();
+    merged_plane_pc_.clear();
     for (std::vector<pcl::PointIndices>::const_iterator it = cluster_indices.begin (); it != cluster_indices.end (); ++it){
         MyPointCloud::Ptr one_cluster(new MyPointCloud);
         for (auto pit = it->indices.begin(); pit != it->indices.end(); ++pit)
-            one_cluster->push_back(merged_all_planes_[*pit]);
+            one_cluster->push_back(cluster_filtered_pc_[*pit]);
 
         if (checkIsPlane(*one_cluster, pp)){
-            merged_all_roofs_ += *one_cluster;
+            merged_plane_pc_ += *one_cluster;
             v_roofs_.push_back(*one_cluster);
         }
     }
@@ -157,6 +150,7 @@ void SceneCloud::extractClusters(const MyPointCloud &cloud, const ClusterParamet
 
 
 
+
 bool SceneCloud::checkIsPlane(const MyPointCloud &cloud_in, const PlaneParameter &pp){
     pcl::MomentOfInertiaEstimation<MyPoint> moment;
     MyPointCloud::Ptr pc_ptr(new MyPointCloud());
@@ -183,7 +177,7 @@ int SceneCloud::selectRoofs(const CarPath& cp, const SupportParameter& sp){
     
     cout << "--------- Select roofs ----------" << endl;
     cout << "Select param: x: [" << sp.roof_x_min << ", " << sp.roof_x_max << "], z: [" << sp.roof_z_min << ", " << sp.roof_z_max << "]. " << endl;
-    merged_all_roofs_valid_.clear();
+    merged_roof_pc_.clear();
     for(int i=0; i<v_roofs_.size(); ++i){
         Eigen::Vector4f center4;
         pcl::compute3DCentroid(v_roofs_[i], center4);
@@ -192,8 +186,8 @@ int SceneCloud::selectRoofs(const CarPath& cp, const SupportParameter& sp){
         plane_centers_->push_back(center);
         MyPoint np = cp.getAnyPoint((int)(fabs(center.y) * 100));  // nearest path point.
 
-        cout << "--> Center: [" << center.x << ", " << center.y << ", " << center.z << "]" << endl;
-        cout << "    Path  : [" << np.x << ", " << np.y << ", " << np.z << "]" << endl;
+        // cout << "--> Center: [" << center.x << ", " << center.y << ", " << center.z << "]" << endl;
+        // cout << "    Path  : [" << np.x << ", " << np.y << ", " << np.z << "]" << endl;
 
         // check by settings
         bool is_valid = false;
@@ -207,7 +201,7 @@ int SceneCloud::selectRoofs(const CarPath& cp, const SupportParameter& sp){
         if(is_valid){
             v_path_points.push_back(np);
             v_valid_roofs_.push_back(v_roofs_[i]);
-            merged_all_roofs_valid_ += v_roofs_[i];
+            merged_roof_pc_ += v_roofs_[i];
         }
         is_valid_roofs.push_back(is_valid);
     }
@@ -252,4 +246,3 @@ int SceneCloud::selectRoofs(const CarPath& cp, const SupportParameter& sp){
     return 0;
 }
 
-#endif

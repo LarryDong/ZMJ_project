@@ -30,6 +30,8 @@ public:
     CarPath() { cout << "[Error]. Not allowed empty input."; }
     CarPath(string filename);
 
+    void saveCarPathToFile(string filename);
+
     MyPointCloud getFullPointCloud(void) const { return *pc_; }
     MyPointCloud resetFullPointCloud(const MyPointCloud& input_pc) {*pc_ = input_pc;}
 

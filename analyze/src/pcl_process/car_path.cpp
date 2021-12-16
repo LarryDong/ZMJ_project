@@ -78,6 +78,7 @@ double CarPath::getClosestPointInPath(const MyPoint& in, MyPoint& out){
 
 
 // to 1cm along y-axis. ATTENTION: always -y direction;
+// step_ is 1 cm, so check along the -y axis at each step. Interpolate between two nearbyp points.
 void CarPath:: digitalize(void){
 
     vector<MyPoint> pts;      // save pointcloud tmply.
@@ -87,23 +88,25 @@ void CarPath:: digitalize(void){
 
     MyPoint pb = getBeginPoint(), pe = getEndPoint();
     int idx_num = (int)(fabs(pe.y - pb.y) / this->step_);       // index from 0 - end, each 1cm
-    pc_->clear();
+    pc_->clear();           // update pc_ on carPath
     pc_->resize(0);
 
     // interpolation (linear) along y-axis;
     for(int i=0; i<idx_num; ++i){
-        double py = -i * this->step_;
-        MyPoint p_pre = pb;       // init values
+        double py = -i * this->step_;       // interpolated point's y pos. (increased by step_ (1cm))
+        MyPoint p_pre = pb;                 // init values
         MyPoint p_next = pe;
         MyPoint p_insert;
-        for(int j=0; j<pts.size() - 1; ++j){
-            if(fabs(py) < fabs(pts[j].y) || fabs(py) > fabs(pts[j+1].y))     // skip
+        for(int j=0; j<pts.size() - 1; ++j){        // find two nearby points. (require car-path monocular increasing on -y axis.)
+            if(fabs(py) < fabs(pts[j].y) || fabs(py) > fabs(pts[j+1].y))    // py is not between two points.
                 continue;
             if(fabs(py) >= fabs(pts[j].y))
-                p_pre = pts[j];
+                p_pre = pts[j];             // py's previous point is found
             if(fabs(py) <= fabs(pts[j+1].y))
                 p_next = pts[j+1];
         }
+
+        // interpolate based on pre/next point and py.
         double dx = p_next.x - p_pre.x;
         double dy = p_next.y - p_pre.y;
         double dz = p_next.z - p_pre.z;
@@ -114,5 +117,12 @@ void CarPath:: digitalize(void){
 
         pc_->push_back(p_insert);
     }
+}
 
+void CarPath::saveCarPathToFile(string filename){
+    ofstream out(filename, ios::out);
+    for(auto pt : *pc_){
+        out << pt.x << " " << pt.y << " " << pt.z << endl;
+    }
+    std::cout << "Saved carparth to " << filename << endl;
 }
