@@ -33,7 +33,7 @@ public:
     void saveCarPathToFile(string filename);
 
     MyPointCloud getFullPointCloud(void) const { return *pc_; }
-    MyPointCloud resetFullPointCloud(const MyPointCloud& input_pc) {*pc_ = input_pc;}
+    // MyPointCloud resetFullPointCloud(const MyPointCloud& input_pc) {*pc_ = input_pc;}
 
     double getClosestPointInPath(const MyPoint& in, MyPoint& out);
     inline MyPoint getBeginPoint(void) const { assert(!pc_->empty()); return (*pc_)[0];}
@@ -42,7 +42,7 @@ public:
 
     void digitalize(void);
 
-private:
+// private:
     MyPointCloud::Ptr pc_, pc_ori_;
     double step_;
 

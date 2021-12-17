@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(analyze)
-set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_BUILD_TYPE "Debug")
 
 
 ## Compile as C++11, supported in ROS Kinetic and newer

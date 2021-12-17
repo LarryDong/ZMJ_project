@@ -38,12 +38,13 @@ using namespace std;
 
 class SceneCloud{
 public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
     SceneCloud() { cout << "[Error]. Not allowed empty input."; }
     SceneCloud(string filename);
     
     MyPointCloud getFullPointCloud(void) const { return *pc_; }
-    MyPointCloud resetFullPointCloud(const MyPointCloud& input_pc) {*pc_ = input_pc;}
-
+    MyPointCloud resetFullPointCloud(const MyPointCloud& input_pc) { pcl::copyPointCloud(input_pc, *pc_); }     // TODO: this function is bugs.
 
     void filter(double ds, double xmin, double xmax);
     int filerByClustering(const ClusterParameter& cp, const PlaneParameter& pp);    // get plane pointscloud and save into `cluster_filtered_pc_`
@@ -52,12 +53,12 @@ public:
 
 
     MyPointCloud getClusterFilteredPC(void) const { return cluster_filtered_pc_; }
-    MyPointCloud getAllPlanes(void) const { return merged_plane_pc_; }
-    // MyPointCloud getRoofsPC(void) const { return merged_roof_pc_; }      // TODO: Bugs, this fuction error. 
+    MyPointCloud getPlanesWholePC(void) const { return merged_plane_pc_; }
+    MyPointCloud getRoofsWholePC(void) const { return merged_roof_pc_; }
 
-    // MyPointCloud getAllPlaneCenters(void) const { return *plane_centers_; }
-    // vector<MyPointCloud> getAllRoofs(void) const { return v_roofs_; }
-    // vector<MyPointCloud> getAllSupports(void) const { return v_supports_; }
+    MyPointCloud getPlaneCentersWholePC(void) const { return *plane_centers_; }
+    vector<MyPointCloud> getRoofsVectorPC(void) const { return v_roofs_; }
+    vector<MyPointCloud> getSupportsVectorPC(void) const { return v_supports_; }
 
 
 // private:

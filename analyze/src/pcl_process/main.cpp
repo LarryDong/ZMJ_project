@@ -49,7 +49,7 @@ DEFINE_double(plane_l1l2_ratio2, 5, "plane l1/l2");
 DEFINE_double(suplane_parameterort_width, 2, "suplane_parameterort width");
 DEFINE_double(suplane_parameterort_height, 5, "suplane_parameterort height");
 DEFINE_int32(suplane_parameterort_direction, 1, "on +x or -x direction");
-// roofs
+//   
 DEFINE_double(roof_norm_angle, M_PI/10, "roof norm along z-axis");
 DEFINE_double(roof_x_min, -1, "x-range");
 DEFINE_double(roof_x_max, 1, "x-range");
@@ -63,6 +63,7 @@ DEFINE_double(support_segment_x_min, -1, "segment along x axis min");
 DEFINE_double(support_segment_x_max, 10, "segment along x axis max");
 
 
+using namespace std;
 
 Eigen::Matrix4d calcGlobalT(const CarPath& cp){
     Eigen::Vector3d pb = tool::xyz2vector(cp.getBeginPoint());  // path_begin
@@ -70,11 +71,10 @@ Eigen::Matrix4d calcGlobalT(const CarPath& cp){
     Eigen::Vector3d dir = pe - pb;
     dir.normalize();
 
-#ifdef DEBUG
+#ifdef DEBUG_OUTPUT
     cout << "Car from: (" << pb(0) << ", " << pb(1) << ", " << pb(2)
         << "), to: (" << pe(0) << ", " << pe(1) << ", " << pe(2) << ")" << endl;
 #endif
-
     Eigen::Vector3d xn, yn, zn;
     zn << 0, 0, 1;
     yn = dir - dir.dot(zn) * zn;      // project x to z;
@@ -88,13 +88,14 @@ Eigen::Matrix4d calcGlobalT(const CarPath& cp){
     R.col(0) = xn;
     R.col(1) = yn;
     R.col(2) = zn;
-    
     // explain the rotation:
     // v: points vector in old coordinate; vn: points vector in new coordiante;
     // x, y, z: new coordiante's axis representated by old coordiante axis;
     // [x, y, z]*v = [xn, yn, zn]*vn + t, where t = pb;  --> vn = -R^(-1)*v - R^(-1)*pb
+    
     Eigen::Matrix4d globalT = Eigen::Matrix4d::Identity();
-    globalT.topLeftCorner<3, 3>(0, 0) = R.transpose();
+    // globalT.topLeftCorner<3, 3>(0, 0) = R.transpose();   // This line is an error 
+    globalT.topLeftCorner(3,3)= R.transpose();
     globalT.col(3).head(3) = -R.transpose() * pb;
 
     // cout << "Final transform (from old points to new points): \n" << globalT << endl;
@@ -104,11 +105,13 @@ Eigen::Matrix4d calcGlobalT(const CarPath& cp){
 void updateCoordinate(CarPath& cp, SceneCloud& sc, const Eigen::Matrix4d& T){       // reset scene_cloud and car_path by new T.
     pcl::PointCloud<pcl::PointXYZ> new_scene_pc;
     pcl::transformPointCloud(sc.getFullPointCloud(), new_scene_pc, T.cast<float>());
-    sc.resetFullPointCloud(new_scene_pc);
+    // sc.resetFullPointCloud(new_scene_pc);
+    *sc.pc_ = new_scene_pc;
     
     pcl::PointCloud<pcl::PointXYZ> new_path_pc;
     pcl::transformPointCloud(cp.getFullPointCloud(), new_path_pc, T.cast<float>());
-    cp.resetFullPointCloud(new_path_pc);
+    // cp.resetFullPointCloud(new_path_pc);
+    *cp.pc_ = new_path_pc;
 }
 
 
@@ -126,14 +129,14 @@ int main(int argc, char **argv){
     CarPath car_path(FLAGS_raw_car_path);
     SceneCloud scene_cloud(FLAGS_raw_ver);
 
-#ifdef DEBUG
-    cout << "Load time: " << ros::Time::now() - tbegin << " s" << endl;
+#ifdef DEBUG_OUTPUT
+    cout << "Load time: " << ros::Time().now() - tbegin << " s" << endl;
 #endif
 
     ROS_WARN("Calculating global transform based on car parth ...");
     Eigen::Matrix4d globalTransform = calcGlobalT(car_path);
 
-#ifdef DEBUG
+#ifdef DEBUG_OUTPUT
     cout << " ------------- Global Transform ------------- " << endl << globalTransform << endl;
 #endif
 
@@ -179,10 +182,7 @@ int main(int argc, char **argv){
     ROS_WARN("Extracting all planes in clustering-fileterd pc.");
     scene_cloud.extractPlanes(cluster_parameter, plane_parameter);    // extract planes by a "loose" criteria
 
-    // // for (int i = 0; i < scene_cloud.getAllRoofs().size(); i++){
-    // //     ros::Publisher tmp = nh.advertise<sensor_msgs::PointCloud2>("/plane_" + std::to_string(i), 1);
-    // //     pubEachPlane.push_back(tmp);
-    // // }
+
 
     // 1.3 Select support based on roofs
     SupportParameter support_parameter;
@@ -214,17 +214,29 @@ int main(int argc, char **argv){
     ros::Publisher pubPlanePC = nh.advertise<sensor_msgs::PointCloud2>("/planes_PC", 1);
     ros::Publisher pubRoofPC = nh.advertise<sensor_msgs::PointCloud2>("/roof_PC", 1);
 
+    vector<ros::Publisher> v_pubEachPlane;
+    for (int i = 0; i < scene_cloud.getRoofsVectorPC().size(); i++){
+        ros::Publisher tmp = nh.advertise<sensor_msgs::PointCloud2>("/plane_" + std::to_string(i), 1);
+        v_pubEachPlane.push_back(tmp);
+    }
+
     ros::Rate r(1);
     while(ros::ok()){
+        // publish data for review
         pubSceneCloud.publish(tool::pointCloud2RosMsg(scene_cloud.getFullPointCloud()));
         pubCarPath.publish(tool::pointCloud2RosMsg(car_path.getFullPointCloud()));
         pubClusteredPC.publish(tool::pointCloud2RosMsg(scene_cloud.getClusterFilteredPC()));
-        pubPlanePC.publish(tool::pointCloud2RosMsg(scene_cloud.getAllPlanes()));
-        pubRoofPC.publish(tool::pointCloud2RosMsg(scene_cloud.merged_roof_pc_));
+        pubPlanePC.publish(tool::pointCloud2RosMsg(scene_cloud.getPlanesWholePC()));
+        pubRoofPC.publish(tool::pointCloud2RosMsg(scene_cloud.getRoofsWholePC()));
+
+        // pub all planes (before selecting roofs)
+        for(int i=0; i<scene_cloud.getRoofsVectorPC().size(); i++){
+            v_pubEachPlane[i].publish(tool::pointCloud2RosMsg(scene_cloud.getRoofsVectorPC()[i]));
+        }
 
         ros::spinOnce();
         r.sleep();
     }
 
     return 0;
-    }
+}

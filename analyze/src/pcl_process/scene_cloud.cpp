@@ -162,13 +162,18 @@ bool SceneCloud::checkIsPlane(const MyPointCloud &cloud_in, const PlaneParameter
     moment.getEigenVectors(vx, vy, vz);
     moment.getEigenValues(l1, l2, l3);
 
+
     // check plane by e-value. l1 > l2 >> l3
     bool is_plane = false;
     if (l1 > pp.l1l3 * l3 && l1 < pp.l1l2 * l2) // plane is sqare, so l1 \approx l2
         is_plane = true;
-    
+
+#ifdef DEBUG_OUTPUT
+    cout << "[Debug]. plane? " << is_plane << ". l1/l3: " << std::setprecision(2) << l1 / l3 << ", l1/l2: " << std::setprecision(2) << l1 / l2 << endl;
+#endif
     return is_plane;
 }
+
 
 int SceneCloud::selectRoofs(const CarPath& cp, const SupportParameter& sp){
 
