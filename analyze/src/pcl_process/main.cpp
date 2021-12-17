@@ -124,6 +124,7 @@ int main(int argc, char **argv){
     cout << "Load ver.pcd from: " << FLAGS_raw_ver << endl;
     cout << "Load car path from: " << FLAGS_raw_car_path << endl;
 
+    // STEP 1. Load data.
     ROS_WARN("Loading data...");
     ros::Time tbegin = ros::Time().now();
     CarPath car_path(FLAGS_raw_car_path);
@@ -133,15 +134,15 @@ int main(int argc, char **argv){
     cout << "Load time: " << ros::Time().now() - tbegin << " s" << endl;
 #endif
 
+    // 1.1 data preprocess.
     ROS_WARN("Calculating global transform based on car parth ...");
     Eigen::Matrix4d globalTransform = calcGlobalT(car_path);
+    // TODO: save globalT
+    updateCoordinate(car_path, scene_cloud, globalTransform);
 
 #ifdef DEBUG_OUTPUT
     cout << " ------------- Global Transform ------------- " << endl << globalTransform << endl;
 #endif
-
-    // TODO: save globalT
-    updateCoordinate(car_path, scene_cloud, globalTransform);
 
     scene_cloud.filter(
         FLAGS_filter_downsampling_size, 
@@ -151,8 +152,8 @@ int main(int argc, char **argv){
     car_path.digitalize();          // to 1cm point cloud.
     // car_path.saveCarPathToFile(FLAGS_clean_car_path);
     
-    // Step 1. Begin segment.
-    // 1.1 Find all planes based on a loose rule. (as a corsa filter.)
+    // Step 2. Find roofs
+    // 2.1 Filter by clustering. 
     ClusterParameter cluster_parameter(
         FLAGS_cluster_angle1, 
         FLAGS_cluster_distance1, 
@@ -167,7 +168,7 @@ int main(int argc, char **argv){
     ROS_WARN("Filtering the PC by mergeing small planes.");
     scene_cloud.filerByClustering(cluster_parameter, plane_parameter); // merge all plane by a "strict" criteria
     
-    // 1.2 Extract all roofs.
+    // 2.2 Extract all planes
     cluster_parameter.reset(
         FLAGS_cluster_angle2, 
         FLAGS_cluster_distance2, 
@@ -183,8 +184,7 @@ int main(int argc, char **argv){
     scene_cloud.extractPlanes(cluster_parameter, plane_parameter);    // extract planes by a "loose" criteria
 
 
-
-    // 1.3 Select support based on roofs
+    // 2.3 Select roofs based on support size.
     SupportParameter support_parameter;
     support_parameter.setRoof(
         FLAGS_roof_x_min, 
@@ -203,17 +203,12 @@ int main(int argc, char **argv){
     scene_cloud.selectRoofs(car_path, support_parameter);
 
 
-    // // for debug:
-
+    // view.
     ros::Publisher pubSceneCloud = nh.advertise<sensor_msgs::PointCloud2>("/scene_cloud", 1);
     ros::Publisher pubCarPath = nh.advertise<sensor_msgs::PointCloud2>("/car_path", 1);
-    // ros::Publisher pubNormalizedCloud = nh.advertise<sensor_msgs::PointCloud2>("/normalized_clouds", 1);
-    // ros::Publisher pubNormlizedCar = nh.advertise<sensor_msgs::PointCloud2>("/normalized_car_path", 1);
-
     ros::Publisher pubClusteredPC = nh.advertise<sensor_msgs::PointCloud2>("/cluster_filtered_PC", 1);
     ros::Publisher pubPlanePC = nh.advertise<sensor_msgs::PointCloud2>("/planes_PC", 1);
     ros::Publisher pubRoofPC = nh.advertise<sensor_msgs::PointCloud2>("/roof_PC", 1);
-
     vector<ros::Publisher> v_pubEachPlane;
     for (int i = 0; i < scene_cloud.getRoofsVectorPC().size(); i++){
         ros::Publisher tmp = nh.advertise<sensor_msgs::PointCloud2>("/plane_" + std::to_string(i), 1);

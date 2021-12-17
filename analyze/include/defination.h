@@ -9,6 +9,6 @@
 typedef pcl::PointXYZ MyPoint;
 typedef pcl::PointCloud<pcl::PointXYZ> MyPointCloud;
 
-#define DEBUG_OUTPUT
+// #define DEBUG_OUTPUT
 
 #endif
