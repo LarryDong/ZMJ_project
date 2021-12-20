@@ -51,13 +51,12 @@ public:
 
 
     MyPointCloud raw_cloud_, plane_cloud_;
+    Eigen::Vector3f plane_center_;
+    Eigen::Vector3f plane_normal_;
 
 private:
 
     static int marker_id_;
-    
-    Eigen::Vector3f plane_center_;
-    Eigen::Vector3f plane_normal_;
     Eigen::Quaternionf q_;
     double plane_width_, plane_height_;     // directly from Settings....
 };

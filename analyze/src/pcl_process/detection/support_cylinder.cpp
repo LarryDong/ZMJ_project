@@ -61,7 +61,11 @@ bool Cylinder::detectCylinder(const CylinderParameters& cp){
     }
 
     is_find_ = true;
-    calCylinderCoeff(raw_coeff);
+
+    // calculate coeff
+    calCylinderCoeff(raw_coeff);        // get cylinder_center_;
+    auto v = raw_coeff->values;
+    cylinder_dir_ = Eigen::Vector3d(v[3], v[4], v[5]);
 
     // get none-cylinder cloud
     extract.setNegative(true);

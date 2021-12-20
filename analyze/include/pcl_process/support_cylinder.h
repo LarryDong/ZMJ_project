@@ -61,15 +61,14 @@ public:
     }
 
     bool is_find_;
+    Eigen::Vector3d cylinder_center_;
+    Eigen::Vector3d cylinder_dir_;
 
 private:
     void calCylinderCoeff(pcl::ModelCoefficients::Ptr raw_coeff);
     void cylinder_filter(MyPointCloud& pc);
-    
-
     static int marker_id_;
     MyPointCloud raw_cloud_, cylinder_cloud_, non_cylinder_cloud_;
-    Eigen::Vector3d cylinder_center_;
     Eigen::Quaterniond q_;          // cylinder axis's quat.
     double cylinder_length_;
     double cylinder_radius_;

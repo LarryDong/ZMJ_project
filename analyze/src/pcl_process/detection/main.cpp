@@ -2,6 +2,7 @@
 #include "pcl_process/support_cylinder.h"
 #include "pcl_process/support_roof.h"
 #include "pcl_process/support_base.h"
+#include "pcl_process/extract_coeff.h"
 #include "defination.h"
 #include "config.h"
 #include "tool.h"
@@ -132,25 +133,25 @@ int main(int argc, char **argv){
 
         double x, y, z;
         MyPointCloud one_support_without_cylinder;
-        Cylinder l_cylinder(*left_half);
+        Cylinder l_cylinder(*left_half), r_cylinder(*right_half);
         if (l_cylinder.detectCylinder(cylinder_settings)){
             g_all_cylinderPC += l_cylinder.getCylinderPointCloud();
-            one_support_without_cylinder += l_cylinder.getNoneCylinderPointCloud();
             l_cylinder.getCenterPos(x, y, z);
+            one_support_without_cylinder += l_cylinder.getNoneCylinderPointCloud();
             cout << "Cylinder center: [" << x << ", " << y << ", " << z << "]. " << endl;
         }
-
-        Cylinder r_cylinder(*right_half);
         if (r_cylinder.detectCylinder(cylinder_settings)){
             g_all_cylinderPC += r_cylinder.getCylinderPointCloud();
-            one_support_without_cylinder += r_cylinder.getNoneCylinderPointCloud();
             r_cylinder.getCenterPos(x, y, z);
+            one_support_without_cylinder += r_cylinder.getNoneCylinderPointCloud();
             cout << "Cylinder center: [" << x << ", " << y << ", " << z << "]. " << endl;
         }
 
-        // 2. get roof  // TODO:
+        // 2. get roof & base
         if(l_cylinder.is_find_ && r_cylinder.is_find_){
-            cout << "Suppot [ " << i << " ] founded. Detect roof/base now." << endl;
+            cout << "Suppot [ " << i << " ] finds 2 cylinders." << endl;
+
+            // roof process
             SupportRoof roof(one_support_without_cylinder);
             none_cylinderPC += one_support_without_cylinder;
             roof.detectRoof(roof_settings);
@@ -164,6 +165,19 @@ int main(int argc, char **argv){
             MyPointCloud one_model_in_scene;
             pcl::transformPointCloud(base.model_cloud_, one_model_in_scene, base.transformation_);
             all_basePC += one_model_in_scene;
+
+            // coeffs;
+            SupportCoeff coeff(
+                l_cylinder.cylinder_center_, 
+                l_cylinder.cylinder_dir_,
+                r_cylinder.cylinder_center_,
+                r_cylinder.cylinder_dir_,
+                base.transformation_.cast<double>(), 
+                roof.plane_center_.cast<double>(), 
+                roof.plane_normal_.cast<double>()
+            );
+            coeff.printCoeff();
+            coeff.calcResult(); // TODO:
         }
     }
 
