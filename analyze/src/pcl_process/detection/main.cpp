@@ -1,12 +1,10 @@
 
-#include "pcl_process/car_path.h"
-#include "pcl_process/scene_cloud.h"
-// #include "pcl_process/support.h"
 #include "pcl_process/support_cylinder.h"
 #include "pcl_process/support_roof.h"
-
+#include "pcl_process/support_base.h"
 #include "defination.h"
 #include "config.h"
+#include "tool.h"
 
 #include <gflags/gflags.h>
 
@@ -20,6 +18,9 @@ using namespace std;
 
 DEFINE_string(isolated_support_path, "/home/larrydong/lidar_ws/output/result/", "isolated_support");
 DEFINE_string(isolated_support_distance, "/home/larrydong/lidar_ws/output/result/distance.txt", "isolated_support's distance");
+DEFINE_string(base_model_file, "/home/larrydong/lidar_ws/output/result/base_model.ply", "base model");
+
+DEFINE_string(support_model_dae, "/home/larrydong/lidar_ws/output/result/xxx.dae", "support dae file"); // TODO:
 
 // point cloud filter
 DEFINE_double(filter_passthrough_xmin, -0.5, "passthrough fitler x range");
@@ -104,13 +105,13 @@ int main(int argc, char **argv){
         
     // settings.
     CylinderParameters cylinder_settings(FLAGS_cylinder_search_radius, FLAGS_cylinder_normal_distance_weight, FLAGS_cylinder_distance_threshould,FLAGS_cylinder_max_iteration, FLAGS_cylinder_radius_min, FLAGS_cylinder_radius_max);
-    PlaneParameters plane_settings(FLAGS_roof_x_min, FLAGS_roof_x_max, FLAGS_roof_z_min, FLAGS_roof_z_max);
+    RoofParameters roof_settings(FLAGS_roof_x_min, FLAGS_roof_x_max, FLAGS_roof_z_min, FLAGS_roof_z_max);
 
 
     // debug for viewer
     vector<MyPointCloud> v_left_cylinders, v_right_cylinders;
     MyPointCloud none_cylinderPC, all_cylinderPC, all_roofPC, all_basePC;
-    
+
 
     //////////////////////////////   MAIN PROCESS  //////////////////////////////
 
@@ -152,8 +153,17 @@ int main(int argc, char **argv){
             cout << "Suppot [ " << i << " ] founded. Detect roof/base now." << endl;
             SupportRoof roof(one_support_without_cylinder);
             none_cylinderPC += one_support_without_cylinder;
-            roof.detectRoof(plane_settings);
+            roof.detectRoof(roof_settings);
             all_roofPC += roof.plane_cloud_;
+
+            // base process
+            SupportBase base(FLAGS_base_model_file, FLAGS_support_model_dae);
+            Eigen::Matrix4f init_guess = Eigen::Matrix4f::Identity();
+            init_guess.col(3).head(3) = Eigen::Vector3f(v_distance[i].x + 2.0, v_distance[i].y, v_distance[i].z + (-1));
+            base.detectBase(one_support_without_cylinder, init_guess);
+            MyPointCloud one_model_in_scene;
+            pcl::transformPointCloud(base.model_cloud_, one_model_in_scene, base.transformation_);
+            all_basePC += one_model_in_scene;
         }
     }
 
@@ -170,7 +180,8 @@ int main(int argc, char **argv){
     }
     ros::Publisher pubCylinders = nh.advertise<sensor_msgs::PointCloud2>("/cylinders", 1);
     ros::Publisher pubRoofs = nh.advertise<sensor_msgs::PointCloud2>("/roofs", 1);
-    // ros::Publisher pubBases = nh.advertise<sensor_msgs::PointCloud2>("/bases", 1);
+    ros::Publisher pubBaseModel = nh.advertise<sensor_msgs::PointCloud2>("/base_model", 1);
+    ros::Publisher pubBases = nh.advertise<sensor_msgs::PointCloud2>("/bases", 1);
 
     ros::Rate r(1);
     while(ros::ok()){
@@ -183,6 +194,8 @@ int main(int argc, char **argv){
         }
         pubCylinders.publish(tool::pointCloud2RosMsg(all_cylinderPC));
         pubRoofs.publish(tool::pointCloud2RosMsg(all_roofPC));
+        // pubBaseModel.publish(tool::pointCloud2RosMsg(model_pc));
+        pubBases.publish(tool::pointCloud2RosMsg(all_basePC));
         ros::spinOnce();
         r.sleep();
     }

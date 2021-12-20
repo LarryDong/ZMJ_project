@@ -30,11 +30,11 @@ using namespace std;
 class SupportBase{
 
 public:
-    SupportBase(string model_name="/home/larrydong/base.pcd", string mesh_name = "/home/larrydong/base_surf.dae") {
+    SupportBase(string model_name, string mesh_name) {
         base_mesh_file_ = mesh_name;
-        if(pcl::io::loadPCDFile(model_name, model_cloud_) !=0 ){
+        if(pcl::io::loadPLYFile(model_name, model_cloud_) !=0 ){
             cout << "[Error] SupportBase: cannot load file: " << model_name << endl;
-            while(1);
+            std::abort();
         }
     }
     

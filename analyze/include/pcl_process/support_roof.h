@@ -29,9 +29,9 @@
 using namespace std;
 
 
-class PlaneParameters{
+class RoofParameters{
 public:
-    PlaneParameters(double xmin, double xmax, double zmin, double zmax):
+    RoofParameters(double xmin, double xmax, double zmin, double zmax):
         x_min_(xmin), x_max_(xmax), z_min_(zmin), z_max_(zmax)
     {}
 
@@ -46,7 +46,7 @@ public:
         pcl::copyPointCloud(cloud_in, raw_cloud_); 
     }
     void resetPointCloud(const MyPointCloud &cloud_in) { pcl::copyPointCloud(cloud_in, raw_cloud_); }
-    void detectRoof(const PlaneParameters &pp);
+    void detectRoof(const RoofParameters &pp);
     visualization_msgs::Marker createMarker(Eigen::Vector4f color = Eigen::Vector4f(0.5, 0.5, 1.0, 1));
 
 

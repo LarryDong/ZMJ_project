@@ -1,6 +1,6 @@
 <launch>
     <node name="detection" pkg="analyze" type="detection" output="screen" 
-    args="--flagfile=$(find analyze)/config/debug_setting.cfg" />
+    args="--flagfile=$(find analyze)/config/detection.cfg" />
     
     <arg name="rviz" default="true" />
     <group if="$(arg rviz)">

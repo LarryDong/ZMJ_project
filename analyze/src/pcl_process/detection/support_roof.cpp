@@ -8,7 +8,7 @@
 
 int SupportRoof::marker_id_ = 0;
 
-void SupportRoof::detectRoof(const PlaneParameters& pp){
+void SupportRoof::detectRoof(const RoofParameters& pp){
 
     // Step 1. Filtering.
     // pass filter
