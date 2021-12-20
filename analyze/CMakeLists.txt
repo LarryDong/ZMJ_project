@@ -42,5 +42,13 @@ add_executable(isolate
     src/pcl_process/isolate_support/car_path.cpp
     src/pcl_process/isolate_support/scene_cloud.cpp
 )
-
 target_link_libraries(isolate ${catkin_LIBRARIES} ${PCL_LIBRARIES} gflags)
+
+add_executable(detection
+    src/pcl_process/detection/main.cpp
+    # src/pcl_process/detection/support_base.cpp
+    src/pcl_process/detection/support_cylinder.cpp
+    src/pcl_process/detection/support_roof.cpp
+    # src/pcl_process/detection/scene_cloud.cpp
+)
+target_link_libraries(detection ${catkin_LIBRARIES} ${PCL_LIBRARIES} gflags)

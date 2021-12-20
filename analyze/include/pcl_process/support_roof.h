@@ -40,13 +40,13 @@ public:
 };
 
 
-class SupportPlane{
+class SupportRoof{
 public:
-    SupportPlane(const MyPointCloud &cloud_in) {
+    SupportRoof(const MyPointCloud &cloud_in) {
         pcl::copyPointCloud(cloud_in, raw_cloud_); 
     }
     void resetPointCloud(const MyPointCloud &cloud_in) { pcl::copyPointCloud(cloud_in, raw_cloud_); }
-    void detectPlane(const PlaneParameters &pp);
+    void detectRoof(const PlaneParameters &pp);
     visualization_msgs::Marker createMarker(Eigen::Vector4f color = Eigen::Vector4f(0.5, 0.5, 1.0, 1));
 
 

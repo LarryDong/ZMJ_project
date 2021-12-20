@@ -1,0 +1,10 @@
+<launch>
+    <node name="detection" pkg="analyze" type="detection" output="screen" 
+    args="--flagfile=$(find analyze)/config/debug_setting.cfg" />
+    
+    <arg name="rviz" default="true" />
+    <group if="$(arg rviz)">
+        <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz" args="-d $(find analyze)/rviz_cfg/detection.rviz" />
+    </group>
+</launch>
+

@@ -1,16 +1,16 @@
 
-#include "process/support_plane.h"
+#include "support_roof.h"
 
 
 #include <pcl/features/moment_of_inertia_estimation.h>
 #include <pcl/common/distances.h>
 
-int SupportPlane::marker_id_ = 0;
 
-void SupportPlane::detectPlane(const PlaneParameters& pp){
+int SupportRoof::marker_id_ = 0;
+
+void SupportRoof::detectRoof(const PlaneParameters& pp){
 
     // Step 1. Filtering.
-
     // pass filter
     pcl::PassThrough<MyPoint> pass;
     MyPointCloud::Ptr pc(new MyPointCloud);
@@ -97,7 +97,7 @@ void SupportPlane::detectPlane(const PlaneParameters& pp){
 }
 
 
-visualization_msgs::Marker SupportPlane::createMarker(Eigen::Vector4f color){
+visualization_msgs::Marker SupportRoof::createMarker(Eigen::Vector4f color){
     visualization_msgs::Marker marker;
     marker.header.frame_id="/laser_link";
     marker.type = visualization_msgs::Marker::CUBE;
