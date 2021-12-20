@@ -107,7 +107,7 @@ int main(int argc, char **argv){
     vector<double> distance = {-0.37, -3.44, -6.54, -9.40, -12.25};       // from car_path.
 
     MyPointCloud all_cylinder_pc, all_base_pc, all_plane_pc;
-    std::vector<pcl::ModelCoefficients> v_coefficients;
+    // std::vector<pcl::ModelCoefficients> v_coefficients;
     std::vector<Cylinder> v_cylinders;
     CylinderParameters cylinder_settings(FLAGS_cylinder_search_radius, FLAGS_cylinder_normal_distance_weight, FLAGS_cylinder_distance_threshould,
                         FLAGS_cylinder_max_iteration, FLAGS_cylinder_radius_min, FLAGS_cylinder_radius_max);

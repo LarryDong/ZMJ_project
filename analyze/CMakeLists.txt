@@ -37,9 +37,10 @@ add_executable(save_data src/save_data/save_data.cpp)
 target_link_libraries(save_data ${catkin_LIBRARIES} ${PCL_LIBRARIES} gflags)
 
 
-add_executable(process 
-    src/pcl_process/main.cpp
-    src/pcl_process/car_path.cpp
-    src/pcl_process/scene_cloud.cpp
+add_executable(isolate
+    src/pcl_process/isolate_support/main.cpp
+    src/pcl_process/isolate_support/car_path.cpp
+    src/pcl_process/isolate_support/scene_cloud.cpp
 )
-target_link_libraries(process ${catkin_LIBRARIES} ${PCL_LIBRARIES} gflags)
+
+target_link_libraries(isolate ${catkin_LIBRARIES} ${PCL_LIBRARIES} gflags)

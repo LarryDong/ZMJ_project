@@ -2,8 +2,6 @@
 #include "scene_cloud.h"
 
 
-extern MyPointCloud gCloud1, gCloud2;
-
 SceneCloud::SceneCloud(string filename) : pc_(new MyPointCloud()),
                                             plane_centers_(new MyPointCloud())
 {
@@ -175,10 +173,10 @@ bool SceneCloud::checkIsPlane(const MyPointCloud &cloud_in, const PlaneParameter
 }
 
 
-int SceneCloud::selectRoofs(const CarPath& cp, const SupportParameter& sp){
+int SceneCloud::selectRoofsAndSegment(const CarPath& cp, const SupportParameter& sp){
 
     vector<bool> is_valid_roofs;
-    vector<MyPoint> v_path_points;
+    // vector<MyPoint> v_car_path_points_;
     
     cout << "--------- Select roofs ----------" << endl;
     cout << "Select param: x: [" << sp.roof_x_min << ", " << sp.roof_x_max << "], z: [" << sp.roof_z_min << ", " << sp.roof_z_max << "]. " << endl;
@@ -189,7 +187,7 @@ int SceneCloud::selectRoofs(const CarPath& cp, const SupportParameter& sp){
         // check.
         MyPoint center = tool::vector2xyz(center4.head(3).cast<double>());
         plane_centers_->push_back(center);
-        MyPoint np = cp.getAnyPoint((int)(fabs(center.y) * 100));  // nearest path point.
+        MyPoint np = cp.getAnyPoint((int)(fabs(center.y) * (1.0f / cp.step_))); // nearest path point.
 
         // cout << "--> Center: [" << center.x << ", " << center.y << ", " << center.z << "]" << endl;
         // cout << "    Path  : [" << np.x << ", " << np.y << ", " << np.z << "]" << endl;
@@ -204,7 +202,7 @@ int SceneCloud::selectRoofs(const CarPath& cp, const SupportParameter& sp){
         // 2. check to norm direction; TODO: Not implemented yet.
 
         if(is_valid){
-            v_path_points.push_back(np);
+            v_car_path_points_.push_back(np);
             v_valid_roofs_.push_back(v_roofs_[i]);
             merged_roof_pc_ += v_roofs_[i];
         }
@@ -220,8 +218,8 @@ int SceneCloud::selectRoofs(const CarPath& cp, const SupportParameter& sp){
 
 
     // segment:
-    for(int i=0; i<v_path_points.size(); ++i){
-        MyPoint p = v_path_points[i];
+    for(int i=0; i<v_car_path_points_.size(); ++i){
+        MyPoint p = v_car_path_points_[i];
 
         // passthrough filter
         pcl::PassThrough<MyPoint> pass;
