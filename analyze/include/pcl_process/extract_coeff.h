@@ -33,18 +33,15 @@ public:
             v_trace_.push_back(MyPoint(x, y, z));
         }
         calcStraightness();
-        calcDistance();
+        calcCarMoveDistance();
     }
     void printResult(void){
-        cout << "---------------------------------------" << endl;
-        cout << "Straightness: " << straightness_ << endl;
-        cout << "Total dist L: " << total_distance_ << endl;
-        cout << "---------------------------------------" << endl;
+        cout << "[Car Trace] Straightness: " << straightness_  << " distance(L): " << total_distance_ << endl;
     }
 
 public:
     void calcStraightness(void);
-    void calcDistance(void);
+    void calcCarMoveDistance(void);
     
     vector<MyPoint> v_trace_;
     double straightness_;

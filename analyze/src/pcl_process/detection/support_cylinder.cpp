@@ -19,7 +19,7 @@ bool Cylinder::detectCylinder(const CylinderParameters& cp){
     pcl::ModelCoefficients::Ptr coefficients_cylinder(new pcl::ModelCoefficients);
     pcl::PointIndices::Ptr inliers_cylinder(new pcl::PointIndices);
 
-#ifdef DEBUG
+#ifdef DEBUG_OUTPUT
     cout << "Parameters-----" << endl;
     cout << "rdius: " << cp.search_radius_ << endl
          << "weight: " << cp.normal_distance_weight_ << endl
@@ -44,10 +44,6 @@ bool Cylinder::detectCylinder(const CylinderParameters& cp){
     seg.setInputNormals(cloud_normals);
     pcl::ModelCoefficients::Ptr raw_coeff (new pcl::ModelCoefficients);
     seg.segment(*inliers_cylinder, *raw_coeff);
-    // coefficient = *coefficients_cylinder;
-#ifdef DEBUG
-    // std::cerr << "Cylinder coefficients: " << *raw_coeff << std::endl;
-#endif
 
     extract.setInputCloud(cloud);
     extract.setIndices(inliers_cylinder);

@@ -8,7 +8,7 @@
 #include <string> 
 
 #include <ros/ros.h>
-#include <visualization_msgs/Marker.h>
+// #include <visualization_msgs/Marker.h>
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/io/ply_io.h>
@@ -38,7 +38,7 @@ public:
         }
     }
     
-    visualization_msgs::Marker createBaseMarker(Eigen::Vector4f color = Eigen::Vector4f(0.8, 0.8, 0, 1));
+    // visualization_msgs::Marker createBaseMarker(Eigen::Vector4f color = Eigen::Vector4f(0.8, 0.8, 0, 1));
     bool detectBase(const MyPointCloud& scene_cloud, const Eigen::Matrix4f& init_guess);
 
     static int marker_id_;

@@ -2,8 +2,7 @@
 #include "support_roof.h"
 
 
-#include <pcl/features/moment_of_inertia_estimation.h>
-#include <pcl/common/distances.h>
+
 
 
 int SupportRoof::marker_id_ = 0;
@@ -89,14 +88,12 @@ void SupportRoof::detectRoof(const RoofParameters& pp){
     Eigen::Quaternionf q_tmp(R);
     q_ = q_tmp;
 
-    cout << "Plane find. Center: " << plane_center_.transpose() << ", normal: " << plane_normal_.transpose() << endl;
-
-#ifdef DEBUG
-    std::cerr << "Plane coefficients (abc, d): " << v[0] << ", " << v[1] << ", " << v[2] << ", " << v[3] << endl;
+#ifdef DEBUG_OUTPUT
+    cout << "[Roof] find. center: " << plane_center_.transpose() << ", normal: " << plane_normal_.transpose() << endl;
 #endif
 }
 
-
+#if 0
 visualization_msgs::Marker SupportRoof::createMarker(Eigen::Vector4f color){
     visualization_msgs::Marker marker;
     marker.header.frame_id="/laser_link";
@@ -121,3 +118,4 @@ visualization_msgs::Marker SupportRoof::createMarker(Eigen::Vector4f color){
     marker.scale.z = 0.01;
     return marker;
 }
+#endif

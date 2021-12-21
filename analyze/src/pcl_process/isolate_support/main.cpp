@@ -22,7 +22,6 @@ DEFINE_string(raw_car_path, "/home/larrydong/lidar_ws/output/raw/car_path.txt", 
 
 DEFINE_string(global_T, "/home/larrydong/lidar_ws/output/result/global_T.txt", "global T based on carpath");
 DEFINE_string(global_T_inv, "/home/larrydong/lidar_ws/output/result/global_T_inv.txt", "global T based on carpath");
-DEFINE_string(clean_ver, "/home/larrydong/lidar_ws/output/result/ver.pcd", "vertical point cloud");
 DEFINE_string(clean_car_path, "/home/larrydong/lidar_ws/output/result/clean_car_path.txt", "car path");
 
 DEFINE_string(isolated_support_path, "/home/larrydong/lidar_ws/output/result/", "isolated_support");
@@ -137,6 +136,7 @@ void saveGlobalT(string filename, Eigen::Matrix4d T){
 
     Eigen::Matrix3d R = T.topLeftCorner(3,3);
     Eigen::Vector3d t = T.topRightCorner(3,1);
+
     Eigen::Matrix4d T_inv = Eigen::Matrix4d::Identity();
     T_inv.topLeftCorner(3,3) = R.transpose();
     T_inv.topRightCorner(3,1) = -R.transpose()*t;
@@ -175,7 +175,6 @@ int main(int argc, char **argv){
     ROS_WARN("Calculating global transform based on car parth ...");
     Eigen::Matrix4d globalTransform = calcGlobalT(car_path);
     saveGlobalT(FLAGS_global_T, globalTransform);
-
     updateCoordinate(car_path, scene_cloud, globalTransform);
 
 #ifdef DEBUG_OUTPUT

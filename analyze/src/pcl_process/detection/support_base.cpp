@@ -17,17 +17,19 @@ bool SupportBase::detectBase(const MyPointCloud& scene_cloud, const Eigen::Matri
     icp.align(tmp, init_guess);
 
     if(icp.hasConverged()){
-        cout<<"Base detected. score: " << icp.getFitnessScore() << endl;
         transformation_ = icp.getFinalTransformation();
+#ifdef DEBUG_OUTPUT
+        cout << "Base detected. score: " << icp.getFitnessScore() << endl;
+#endif
         return true;
     }
     else{
-        cout << "[Warning]. Base not detected in scene..." << endl;
+        cout << "[Base] Base not detected in scene..." << endl;
         return false;
     }
 }
 
-
+#if 0
 visualization_msgs::Marker SupportBase::createBaseMarker(Eigen::Vector4f color){
     visualization_msgs::Marker marker;
     marker.header.frame_id="/laser_link";
@@ -53,3 +55,4 @@ visualization_msgs::Marker SupportBase::createBaseMarker(Eigen::Vector4f color){
     marker.scale.z = 1;
     return marker;
 }
+#endif

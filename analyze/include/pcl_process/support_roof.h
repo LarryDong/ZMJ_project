@@ -8,23 +8,19 @@
 #include <string> 
 
 #include <ros/ros.h>
-#include <visualization_msgs/Marker.h>
-
-// #include <pcl/io/pcd_io.h>
-// #include <pcl/io/ply_io.h>
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
+// #include <visualization_msgs/Marker.h>
+#include <pcl/features/moment_of_inertia_estimation.h>
+#include <pcl/common/distances.h>
 #include <pcl/segmentation/sac_segmentation.h>
 #include <pcl/ModelCoefficients.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/filters/passthrough.h>
 #include <pcl/filters/statistical_outlier_removal.h>
-// #include <pcl/registration/icp.h>
 
 #include <eigen3/Eigen/Core>
 
 #include "defination.h"
+
 
 using namespace std;
 
@@ -47,19 +43,16 @@ public:
     }
     void resetPointCloud(const MyPointCloud &cloud_in) { pcl::copyPointCloud(cloud_in, raw_cloud_); }
     void detectRoof(const RoofParameters &pp);
-    visualization_msgs::Marker createMarker(Eigen::Vector4f color = Eigen::Vector4f(0.5, 0.5, 1.0, 1));
-
+    // visualization_msgs::Marker createMarker(Eigen::Vector4f color = Eigen::Vector4f(0.5, 0.5, 1.0, 1));
 
     MyPointCloud raw_cloud_, plane_cloud_;
     Eigen::Vector3f plane_center_;
     Eigen::Vector3f plane_normal_;
 
 private:
-
     static int marker_id_;
     Eigen::Quaternionf q_;
     double plane_width_, plane_height_;     // directly from Settings....
 };
-
 
 #endif
