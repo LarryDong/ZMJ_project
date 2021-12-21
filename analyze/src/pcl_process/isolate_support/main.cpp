@@ -21,6 +21,7 @@ DEFINE_string(raw_ver, "/home/larrydong/lidar_ws/output/raw/ver.pcd", "vertical 
 DEFINE_string(raw_car_path, "/home/larrydong/lidar_ws/output/raw/car_path.txt", "car path pointcloud.");
 
 DEFINE_string(global_T, "/home/larrydong/lidar_ws/output/result/global_T.txt", "global T based on carpath");
+DEFINE_string(global_T_inv, "/home/larrydong/lidar_ws/output/result/global_T_inv.txt", "global T based on carpath");
 DEFINE_string(clean_ver, "/home/larrydong/lidar_ws/output/result/ver.pcd", "vertical point cloud");
 DEFINE_string(clean_car_path, "/home/larrydong/lidar_ws/output/result/clean_car_path.txt", "car path");
 
@@ -113,6 +114,42 @@ void updateCoordinate(CarPath& cp, SceneCloud& sc, const Eigen::Matrix4d& T){   
     *cp.pc_ = new_path_pc;
 }
 
+void saveGlobalT(string filename, Eigen::Matrix4d T){
+    
+    // std::ifstream finit("/home/larrydong/guess_T.txt");
+    // if(!finit.is_open()){
+    //     ROS_ERROR("No init value. Error!");
+    //     std::abort();
+    // }
+    // else{
+    //     finit >> r11 >> r12 >> r13 >> t1 >> r21 >> r22 >> r23 >> t2 >> r31 >> r32 >> r33 >> t3;
+    //     R_init << r11, r12, r13, r21, r22, r23, r31, r32, r33;
+    //     t_init << t1, t2, t3;
+    // }
+
+    std::ofstream of(FLAGS_global_T, ios::out);
+    if(!of.is_open()){
+        cout << "Error. Cannot save Global T to: " << FLAGS_global_T << endl;
+        std::abort();
+    }
+    of << T;
+    of.close();
+
+    Eigen::Matrix3d R = T.topLeftCorner(3,3);
+    Eigen::Vector3d t = T.topRightCorner(3,1);
+    Eigen::Matrix4d T_inv = Eigen::Matrix4d::Identity();
+    T_inv.topLeftCorner(3,3) = R.transpose();
+    T_inv.topRightCorner(3,1) = -R.transpose()*t;
+    std::ofstream of2(FLAGS_global_T_inv, ios::out);
+    if(!of2.is_open()){
+        cout << "Error. Cannot save Global T inv to: " << FLAGS_global_T_inv << endl;
+        std::abort();
+    }
+    of2 << T_inv;
+    of2.close();
+    std::cout << "Saved to globalT/globalT_inv to: " << FLAGS_global_T_inv << endl;
+}
+
 
 
 int main(int argc, char **argv){
@@ -137,7 +174,8 @@ int main(int argc, char **argv){
     // 1.1 data preprocess.
     ROS_WARN("Calculating global transform based on car parth ...");
     Eigen::Matrix4d globalTransform = calcGlobalT(car_path);
-    // TODO: save globalT
+    saveGlobalT(FLAGS_global_T, globalTransform);
+
     updateCoordinate(car_path, scene_cloud, globalTransform);
 
 #ifdef DEBUG_OUTPUT
@@ -150,7 +188,7 @@ int main(int argc, char **argv){
         FLAGS_filter_passthrough_xmax
     );
     car_path.digitalize();          // to 1cm point cloud.
-    // car_path.saveCarPathToFile(FLAGS_clean_car_path);
+    car_path.saveCarPathToFile(FLAGS_clean_car_path);
     
     // Step 2. Find roofs
     // 2.1 Filter by clustering. 

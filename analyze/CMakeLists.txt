@@ -49,5 +49,6 @@ add_executable(detection
     src/pcl_process/detection/support_base.cpp
     src/pcl_process/detection/support_cylinder.cpp
     src/pcl_process/detection/support_roof.cpp
+    src/pcl_process/detection/extract_coeff.cpp
 )
 target_link_libraries(detection ${catkin_LIBRARIES} ${PCL_LIBRARIES} gflags)

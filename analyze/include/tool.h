@@ -13,8 +13,12 @@
 #include <sensor_msgs/PointCloud2.h>
 
 #include <pcl/point_types.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 #include "defination.h"
+
+
+#define PI 3.1415926
 
 namespace tool
 {
@@ -47,6 +51,9 @@ namespace tool
         msg.header.frame_id = "laser_link";
         return msg;
     }
+
+    inline double rad2degree(double rad) { return rad * 180.0 / PI; }
+    inline double degree2rad(double degree) { return degree * PI / 180.0; }
 }
 
 

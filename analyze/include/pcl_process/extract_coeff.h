@@ -3,12 +3,55 @@
 #define EXTRACT_COEFF_H_
 
 #include <iostream>
+#include <fstream>
+#include <vector>
 #include <eigen3/Eigen/Core>
+
+#include "defination.h"
+#include "tool.h"
 
 using namespace std;
 
 typedef Eigen::Vector3d V3d;
 typedef Eigen::Matrix4d M4d;
+
+
+// 工作面直线度、小车运行总距离L、轨迹采样点数m、轨迹采样间距、轨迹坐标。
+class TraceCoeff{
+public:
+    TraceCoeff(string filename){
+        ifstream in(filename);
+        if(!in.is_open()){
+            cout << "Error. Cannot load Trace from: " << filename << endl;
+            std::abort();
+        }
+        double x, y, z;
+        while(!in.eof()){
+            if(in.fail())
+                break;
+            in >> x >> y >> z;
+            v_trace_.push_back(MyPoint(x, y, z));
+        }
+        calcStraightness();
+        calcDistance();
+    }
+    void printResult(void){
+        cout << "---------------------------------------" << endl;
+        cout << "Straightness: " << straightness_ << endl;
+        cout << "Total dist L: " << total_distance_ << endl;
+        cout << "---------------------------------------" << endl;
+    }
+
+public:
+    void calcStraightness(void);
+    void calcDistance(void);
+    
+    vector<MyPoint> v_trace_;
+    double straightness_;
+    double total_distance_;
+};
+
+
 
 class SupportCoeff{
 
@@ -25,7 +68,9 @@ public:
         roof_center_(roof_center),
         roof_normal_(roof_normal),
         base_transform_(base_transform){}
-        
+
+
+    void setRefPosition(double distance) { ref_pos_ = distance; }
 
     void printCoeff(void){
         cout << "Cylinder: ----------------------------------------------------" << endl;
@@ -43,7 +88,7 @@ public:
 
 
 private:
-    
+    double ref_pos_;                // reference pose by carPath
     V3d lc_center_, lc_dir_;        // left-cylinder center/direction
     V3d rc_center_, rc_dir_;
     V3d roof_center_, roof_normal_;
@@ -51,5 +96,7 @@ private:
 
 };
 
+
+void outputResult(const TraceCoeff& trace, const SupportCoeff& support, string filename);
 
 #endif 

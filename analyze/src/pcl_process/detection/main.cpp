@@ -16,11 +16,11 @@
 #include <pcl/io/ply_io.h>
 
 using namespace std;
-
 DEFINE_string(isolated_support_path, "/home/larrydong/lidar_ws/output/result/", "isolated_support");
 DEFINE_string(isolated_support_distance, "/home/larrydong/lidar_ws/output/result/distance.txt", "isolated_support's distance");
 DEFINE_string(base_model_file, "/home/larrydong/lidar_ws/output/result/base_model.ply", "base model");
 
+DEFINE_string(clean_car_path, "/home/larrydong/lidar_ws/output/result/clean_car_path.txt", "car path");
 DEFINE_string(support_model_dae, "/home/larrydong/lidar_ws/output/result/xxx.dae", "support dae file"); // TODO:
 
 // point cloud filter
@@ -28,10 +28,10 @@ DEFINE_double(filter_passthrough_xmin, -0.5, "passthrough fitler x range");
 DEFINE_double(filter_passthrough_xmax, 5, "passthrough fitler x range");
 DEFINE_double(filter_downsampling_size, 0.03, "voxel downsampling size");
 
-// suplane_parameterort parameters
-DEFINE_double(suplane_parameterort_width, 2, "suplane_parameterort width");
-DEFINE_double(suplane_parameterort_height, 5, "suplane_parameterort height");
-DEFINE_int32(suplane_parameterort_direction, 1, "on +x or -x direction");
+// roof parameters
+DEFINE_double(roof_width, 2.0, "roof width");
+DEFINE_double(roof_height, 2.7, "roof height");
+DEFINE_int32(roof_direction, 1, "on +x or -x direction");
 //   
 DEFINE_double(roof_norm_angle, M_PI/10, "roof norm along z-axis");
 DEFINE_double(roof_x_min, -1, "x-range");
@@ -52,6 +52,7 @@ DEFINE_double(cylinder_distance_threshould, 0.2, "cylinder_distance_threshould")
 DEFINE_double(cylinder_radius_min, 0.1, "cylinder_radius_min");
 DEFINE_double(cylinder_radius_max, 1.0, "cylinder_radius_max");
 DEFINE_int32(cylinder_max_iteration, 1000, "max iteration for optimazaion");
+
 
 
 MyPointCloud g_all_cylinderPC;
@@ -98,6 +99,15 @@ int main(int argc, char **argv){
 	ros::NodeHandle nh;
     google::ParseCommandLineFlags(&argc, &argv, true);
 
+    vector<SupportCoeff> v_coeffs;
+
+
+    /////////////////////////// trace....
+    TraceCoeff trace(FLAGS_clean_car_path);
+    trace.printResult();
+    /////////////////////////// trace....
+
+
     // load data.
     vector<MyPointCloud> v_supports;
     vector<MyPoint> v_distance;
@@ -117,6 +127,7 @@ int main(int argc, char **argv){
     //////////////////////////////   MAIN PROCESS  //////////////////////////////
 
     for(int i=0; i<isolated_number; ++i){
+        cout << "Index: " << i << endl;
         // 0. extract support / position
         MyPointCloud::Ptr one_support(new MyPointCloud()), left_half(new MyPointCloud()), right_half(new MyPointCloud());
         *one_support = v_supports[i];
