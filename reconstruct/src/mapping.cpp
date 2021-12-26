@@ -22,6 +22,7 @@
 #include <eigen3/Eigen/Core>
 #include <eigen3/Eigen/Dense>
 
+using namespace std;
 
 double g_min_range = 0.5, g_max_range = 10.0, g_ds_size = 0.2;;
 
@@ -186,7 +187,8 @@ int main(int argc, char **argv){
         }
         if(!isSynced){
             mBuf.unlock();
-            continue;
+            cout << "Not sync. " << endl;
+            // continue;                    // uncommented this line. Hard to sync. when using it.
         }
         mBuf.unlock();
         // printf("[Synced]. Odom / pointCloud: %f,  %f \n", currOdom.header.stamp.toSec(), pcMsg.header.stamp.toSec());
